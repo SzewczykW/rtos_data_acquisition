@@ -1,0 +1,46 @@
+# Ignore everything
+*
+.*
+**/.*
+
+# Allow directories
+!*/
+
+# Allow Git metadata
+!.gitignore
+!.gitattributes
+!.gitmodules
+
+# Allow project configuration files
+!.editorconfig
+!.clang-format
+!.pre-commit-config.yaml
+!*.uvprojx
+!README.md
+!LICENSE
+
+# Allow C source and header files
+!src/
+!src/**/*.c
+!src/**/*.h
+!include/
+!include/**/*.h
+!drivers/
+!drivers/**/*.c
+!drivers/**/*.h
+
+# Allow RTE Configuration
+!RTE/
+!RTE/**/*.h
+!RTE/**/*.c
+!RTE/**/*.s
+
+# Allow documentation sources and outputs
+!docs/
+!docs/**/*.dox
+!docs/**/*.pdf
+!docs/**/*.png
+!docs/**/*.svg
+!docs/**/*.html
+!docs/**/*.dot
+!docs/themes/**/*
