@@ -7,43 +7,43 @@
 !*/
 
 # Allow Git metadata
-!.gitattributes
-!.gitignore
-!.gitmodules
+!/.gitattributes
+!/.gitignore
+!/.gitmodules
 
 # Allow project configuration files
-!.clang-format
-!.clang-format-ignore
-!.editorconfig
-!.pre-commit-config.yaml
-!.python-version
-!LICENSE
-!README.md
-!data_acquisition.uvprojx
-!pyproject.toml
-!uv.lock
+!/.clang-format
+!/.clang-format-ignore
+!/.editorconfig
+!/.pre-commit-config.yaml
+!/.python-version
+!/LICENSE
+!/README.md
+!/data_acquisition.uvprojx
+!/pyproject.toml
+!/uv.lock
 
 # Allow C source and header files
-!src/
-!src/**/*.c
-!src/**/*.h
-!include/
-!include/**/*.h
-!data_acquisition/
-!data_acquisition/**/*.py
+!/src/
+!/src/**/*.c
+!/src/**/*.h
+!/include/
+!/include/**/*.h
+!/data_acquisition/
+!/data_acquisition/**/*.py
 
 # Allow RTE Configuration
-!RTE/
-!RTE/**/*.h
-!RTE/**/*.c
-!RTE/**/*.s
+!/RTE/
+!/RTE/**/*.h
+!/RTE/**/*.c
+!/RTE/**/*.s
 
 # Allow documentation sources and outputs
-!docs/
-!docs/**/*.dox
-!docs/**/*.pdf
-!docs/**/*.png
-!docs/**/*.svg
-!docs/**/*.html
-!docs/**/*.dot
-!docs/themes/**/*
+!/docs/
+!/docs/**/*.dox
+!/docs/**/*.pdf
+!/docs/**/*.png
+!/docs/**/*.svg
+!/docs/**/*.html
+!/docs/**/*.dot
+!/docs/themes/**/*

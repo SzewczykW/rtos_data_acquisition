@@ -8,6 +8,8 @@
 #include "system.h"
 
 #include "LPC17xx.h"
+#include "adc.h"
+#include "config.h"
 #include "logger.h"
 #include "panic.h"
 
@@ -20,6 +22,11 @@
 int system_init(void)
 {
     if (logger_init() != LOGGER_OK)
+    {
+        return -1;
+    }
+
+    if (adc_init(ADC_CHANNEL_SELECT) != ADC_OK)
     {
         return -1;
     }

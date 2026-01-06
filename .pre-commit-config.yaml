@@ -13,13 +13,11 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c]
-        exclude: '^(RTE|DebugConfig|Listings|Objects)/'
 
   - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
     rev: 3.6.0
     hooks:
       - id: editorconfig-checker
-        exclude: '^(RTE|DebugConfig|Listings|Objects)/|\.uvprojx$'
 
   # Python linters and formatters
   - repo: https://github.com/astral-sh/ruff-pre-commit

@@ -16,8 +16,14 @@
  * @defgroup USART_Config USART Configuration
  * @{
  */
-#define USART_NUM      1      /**< USART number to use (0, 1, 2, 3) */
 #define USART_BAUDRATE 115200 /**< USART baud rate */
+/** @} */
+
+/**
+ * @defgroup ADC_Config ADC Configuration
+ * @{
+ */
+#define ADC_CHANNEL_SELECT 0 /**< ADC channel to use (0-7, maps to P0.23-P1.31) */
 /** @} */
 
 #endif /* CONFIG_H */

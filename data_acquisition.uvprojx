@@ -435,24 +435,24 @@
           <GroupName>drivers</GroupName>
           <Files>
             <File>
-              <FileName>drv_adc.c</FileName>
+              <FileName>adc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\drivers\drv_adc.c</FilePath>
+              <FilePath>.\src\drivers\adc.c</FilePath>
             </File>
             <File>
-              <FileName>drv_ne555.c</FileName>
+              <FileName>ne555.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\drivers\drv_ne555.c</FilePath>
+              <FilePath>.\src\drivers\ne555.c</FilePath>
             </File>
             <File>
-              <FileName>drv_adc.h</FileName>
+              <FileName>adc.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\include\drivers\drv_adc.h</FilePath>
+              <FilePath>.\include\drivers\adc.h</FilePath>
             </File>
             <File>
-              <FileName>drv_ne555.h</FileName>
+              <FileName>ne555.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\include\drivers\drv_ne555.h</FilePath>
+              <FilePath>.\include\drivers\ne555.h</FilePath>
             </File>
           </Files>
         </Group>

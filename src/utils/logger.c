@@ -9,6 +9,8 @@
 
 #include "Driver_USART.h"
 #include "LPC17xx.h"
+#include "RTE_Components.h"
+#include "RTE_Device.h"
 #include "cmsis_os2.h"
 #include "config.h"
 #include "panic.h"
@@ -16,21 +18,22 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Select USART driver based on config.h */
-#if (USART_NUM == 0)
+/* Auto-select USART driver based on RTE_Device.h configuration */
+#if defined(RTE_UART0) && (RTE_UART0 == 1)
 extern ARM_DRIVER_USART Driver_USART0;
 #define USART_DRIVER (&Driver_USART0)
-#elif (USART_NUM == 1)
+#elif defined(RTE_UART1) && (RTE_UART1 == 1)
 extern ARM_DRIVER_USART Driver_USART1;
 #define USART_DRIVER (&Driver_USART1)
-#elif (USART_NUM == 2)
+#elif defined(RTE_UART2) && (RTE_UART2 == 1)
 extern ARM_DRIVER_USART Driver_USART2;
 #define USART_DRIVER (&Driver_USART2)
-#elif (USART_NUM == 3)
+#elif defined(RTE_UART3) && (RTE_UART3 == 1)
 extern ARM_DRIVER_USART Driver_USART3;
 #define USART_DRIVER (&Driver_USART3)
 #else
-#error "Invalid USART_NUM in config.h. Valid values: 0, 1, 2, 3"
+#error                                                                                 \
+    "No USART enabled in RTE_Device.h. Enable RTE_UART0, RTE_UART1, RTE_UART2 or RTE_UART3"
 #endif
 
 #define LOGGER_BUFFER_SIZE      256  /**< Internal buffer size */
