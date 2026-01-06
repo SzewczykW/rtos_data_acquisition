@@ -25,8 +25,6 @@
 #define RTE_RTOS_FreeRTOS_EVENTGROUPS /* RTOS FreeRTOS Event Groups */
 /* ARM::RTOS&FreeRTOS:Heap&Heap_4@11.2.0 */
 #define RTE_RTOS_FreeRTOS_HEAP_4 /* RTOS FreeRTOS Heap 4 */
-/* ARM::RTOS&FreeRTOS:Message Buffer@11.2.0 */
-#define RTE_RTOS_FreeRTOS_MESSAGE_BUFFER /* RTOS FreeRTOS Message Buffers */
 /* ARM::RTOS&FreeRTOS:Timers@11.2.0 */
 #define RTE_RTOS_FreeRTOS_TIMERS /* RTOS FreeRTOS Timers */
 /* Keil::CMSIS Driver:Ethernet MAC@2.14.0 */
@@ -40,12 +38,12 @@
 #define RTE_Drivers_USART3 /* Driver USART3 */
 /* Keil::Device:Startup@1.0.0 */
 #define RTE_DEVICE_STARTUP_LPC17XX /* Device Startup for NXP17XX */
-/* Keil::Network&MDK:CORE@8.1.0 */
+/* Keil::Network&MDK:CORE@8.2.0 */
 #define RTE_Network_Core /* Network Core */
-/* Keil::Network&MDK:Interface:ETH@8.1.0 */
+/* Keil::Network&MDK:Interface:ETH@8.2.0 */
 #define RTE_Network_Interface_ETH_0 /* Network Interface ETH 0 */
 
-/* Keil::Network&MDK:Socket:UDP@8.1.0 */
+/* Keil::Network&MDK:Socket:UDP@8.2.0 */
 #define RTE_Network_Socket_UDP /* Network Socket UDP */
 
 #endif /* RTE_COMPONENTS_H */

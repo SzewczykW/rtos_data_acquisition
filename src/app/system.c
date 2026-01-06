@@ -8,10 +8,11 @@
 #include "system.h"
 
 #include "LPC17xx.h"
-#include "adc.h"
 #include "config.h"
 #include "logger.h"
 #include "panic.h"
+#include "task_acquisition.h"
+#include "task_network.h"
 
 #include <stddef.h>
 
@@ -26,8 +27,15 @@ int system_init(void)
         return -1;
     }
 
-    if (adc_init(ADC_CHANNEL_SELECT) != ADC_OK)
+    if (network_init() != 0)
     {
+        LOG_ERROR("Network initialization failed");
+        return -1;
+    }
+
+    if (acquisition_init() != 0)
+    {
+        LOG_ERROR("Acquisition initialization failed");
         return -1;
     }
 

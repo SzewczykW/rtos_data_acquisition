@@ -16,8 +16,6 @@
  * @defgroup ADC_Driver ADC Driver
  * @{
  */
-
-/** ADC resolution in bits */
 #define ADC_RESOLUTION 12U
 
 /** ADC channel definitions */

@@ -14,13 +14,13 @@
 //   <o>Variant <0=>IPv4 only
 //              <1=>IPv4/IPv6 dual stack
 //   <i>Configure variant of the network library
-#define NET_CORE_VARIANT 1
+#define NET_CORE_VARIANT 0
 
 //   <s.15>Local Host Name
 //   <i>This is the name under which embedded host can be
 //   <i>accessed on a local area network.
 //   <i>Default: "my_host"
-#define NET_HOST_NAME "my_host"
+#define NET_HOST_NAME "wikryk"
 
 //   <o>Memory Pool Size <1536-262144:4>
 //   <i>This is the size of a memory pool in bytes. Buffers for

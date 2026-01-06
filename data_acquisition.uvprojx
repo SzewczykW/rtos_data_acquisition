@@ -314,7 +314,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>3</Optim>
+            <Optim>7</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>include;include\app;include\utils;include\drivers;include\net</IncludePath>
+              <IncludePath>include;include\app;include\utils;include\drivers;include\net;include\tasks</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -385,34 +385,9 @@
           <GroupName>app</GroupName>
           <Files>
             <File>
-              <FileName>command_parser.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\app\command_parser.c</FilePath>
-            </File>
-            <File>
-              <FileName>data_acquisition.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\app\data_acquisition.c</FilePath>
-            </File>
-            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\app\main.c</FilePath>
-            </File>
-            <File>
-              <FileName>command_parser.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\include\app\command_parser.h</FilePath>
-            </File>
-            <File>
-              <FileName>data_acquisition.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\include\app\data_acquisition.h</FilePath>
-            </File>
-            <File>
-              <FileName>main.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\include\app\main.h</FilePath>
             </File>
             <File>
               <FileName>system.h</FileName>
@@ -440,19 +415,9 @@
               <FilePath>.\src\drivers\adc.c</FilePath>
             </File>
             <File>
-              <FileName>ne555.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\drivers\ne555.c</FilePath>
-            </File>
-            <File>
               <FileName>adc.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\include\drivers\adc.h</FilePath>
-            </File>
-            <File>
-              <FileName>ne555.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\include\drivers\ne555.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -490,11 +455,6 @@
               <FilePath>.\src\tasks\task_acquisition.c</FilePath>
             </File>
             <File>
-              <FileName>task_acquisition.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\src\tasks\task_acquisition.h</FilePath>
-            </File>
-            <File>
               <FileName>task_network.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\tasks\task_network.c</FilePath>
@@ -502,7 +462,12 @@
             <File>
               <FileName>task_network.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\src\tasks\task_network.h</FilePath>
+              <FilePath>.\include\tasks\task_network.h</FilePath>
+            </File>
+            <File>
+              <FileName>task_acquisition.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\include\tasks\task_acquisition.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -564,12 +529,6 @@
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </api>
-      <api Capiversion="2.2.0" Cclass="CMSIS Driver" Cgroup="Ethernet" exclusive="0">
-        <package name="CMSIS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="6.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </api>
       <api Capiversion="1.0.0" Cclass="CMSIS Driver" Cgroup="GPIO" exclusive="0">
         <package name="CMSIS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="6.2.0"/>
         <targetInfos>
@@ -596,12 +555,6 @@
       </api>
     </apis>
     <components>
-      <component Capiversion="2.2.0" Cclass="CMSIS Driver" Cgroup="Ethernet" Csub="Custom" Cvendor="ARM" Cversion="1.0.0" custom="1" ymlID="CMSIS Driver:Ethernet:Custom">
-        <package name="CMSIS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="6.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
       <component Capiversion="1.0.0" Cclass="CMSIS Driver" Cgroup="GPIO" Csub="Custom" Cvendor="ARM" Cversion="1.0.0" custom="1" ymlID="CMSIS Driver:GPIO:Custom">
         <package name="CMSIS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="6.2.0"/>
         <targetInfos>
@@ -645,12 +598,6 @@
         </targetInfos>
       </component>
       <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Heap" Cvariant="Heap_4" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Heap" ymlID="RTOS&amp;FreeRTOS:Heap&amp;Heap_4">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
-      <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Message Buffer" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Message Buffer" ymlID="RTOS&amp;FreeRTOS:Message Buffer">
         <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
@@ -704,20 +651,20 @@
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </component>
-      <component Cbundle="MDK" Cclass="Network" Cgroup="CORE" Cvendor="Keil" Cversion="8.1.0" condition="CMSIS Core with RTOS" ymlID="Network&amp;MDK:CORE">
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+      <component Cbundle="MDK" Cclass="Network" Cgroup="CORE" Cvendor="Keil" Cversion="8.2.0" condition="CMSIS Core with RTOS" ymlID="Network&amp;MDK:CORE">
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </component>
-      <component Cbundle="MDK" Cclass="Network" Cgroup="Interface" Csub="ETH" Cvendor="Keil" Cversion="8.1.0" condition="Network Driver ETH" maxInstances="2" ymlID="Network&amp;MDK:Interface:ETH">
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+      <component Cbundle="MDK" Cclass="Network" Cgroup="Interface" Csub="ETH" Cvendor="Keil" Cversion="8.2.0" condition="Network Driver ETH" maxInstances="2" ymlID="Network&amp;MDK:Interface:ETH">
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </component>
-      <component Cbundle="MDK" Cclass="Network" Cgroup="Socket" Csub="UDP" Cvendor="Keil" Cversion="8.1.0" condition="Network Interface" ymlID="Network&amp;MDK:Socket:UDP">
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+      <component Cbundle="MDK" Cclass="Network" Cgroup="Socket" Csub="UDP" Cvendor="Keil" Cversion="8.2.0" condition="Network Interface" ymlID="Network&amp;MDK:Socket:UDP">
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
@@ -750,32 +697,32 @@
       </file>
       <file attr="config" category="header" name="Components\Network\Config\Net_Config.h" version="8.0.0">
         <instance index="0">RTE\Network\Net_Config.h</instance>
-        <component Cbundle="MDK" Cclass="Network" Cgroup="CORE" Cvendor="Keil" Cversion="8.1.0" condition="CMSIS Core with RTOS"/>
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+        <component Cbundle="MDK" Cclass="Network" Cgroup="CORE" Cvendor="Keil" Cversion="8.2.0" condition="CMSIS Core with RTOS"/>
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </file>
       <file attr="config" category="header" name="Components\Network\Config\Net_Config_ETH.h" version="7.5.0">
         <instance index="0">RTE\Network\Net_Config_ETH_0.h</instance>
-        <component Cbundle="MDK" Cclass="Network" Cgroup="Interface" Csub="ETH" Cvendor="Keil" Cversion="8.1.0" condition="Network Driver ETH" maxInstances="2"/>
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+        <component Cbundle="MDK" Cclass="Network" Cgroup="Interface" Csub="ETH" Cvendor="Keil" Cversion="8.2.0" condition="Network Driver ETH" maxInstances="2"/>
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </file>
       <file attr="config" category="header" name="Components\Network\Config\Net_Config_UDP.h" version="5.1.1">
         <instance index="0">RTE\Network\Net_Config_UDP.h</instance>
-        <component Cbundle="MDK" Cclass="Network" Cgroup="Socket" Csub="UDP" Cvendor="Keil" Cversion="8.1.0" condition="Network Interface"/>
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+        <component Cbundle="MDK" Cclass="Network" Cgroup="Socket" Csub="UDP" Cvendor="Keil" Cversion="8.2.0" condition="Network Interface"/>
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </file>
       <file attr="config" category="header" name="Components\Network\Config\Net_Debug.h" version="8.0.0">
         <instance index="0">RTE\Network\Net_Debug.h</instance>
-        <component Cbundle="MDK" Cclass="Network" Cgroup="CORE" Cvendor="Keil" Cversion="8.1.0" condition="CMSIS Core with RTOS"/>
-        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.1.0"/>
+        <component Cbundle="MDK" Cclass="Network" Cgroup="CORE" Cvendor="Keil" Cversion="8.2.0" condition="CMSIS Core with RTOS"/>
+        <package name="MDK-Middleware" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="Keil" version="8.2.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
