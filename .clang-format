@@ -5,6 +5,8 @@ IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 88
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: BlockIndent
 
 # Braces
 BreakBeforeBraces: Allman

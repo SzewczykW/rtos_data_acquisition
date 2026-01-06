@@ -8,8 +8,8 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-[*.{c,h}]
-indent_size = 4
-
 [*.{yaml,yml}]
+indent_size = 2
+
+[.clang-format]
 indent_size = 2

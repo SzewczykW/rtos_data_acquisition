@@ -7,17 +7,21 @@
 !*/
 
 # Allow Git metadata
-!.gitignore
 !.gitattributes
+!.gitignore
 !.gitmodules
 
 # Allow project configuration files
-!.editorconfig
 !.clang-format
+!.clang-format-ignore
+!.editorconfig
 !.pre-commit-config.yaml
-!*.uvprojx
-!README.md
+!.python-version
 !LICENSE
+!README.md
+!data_acquisition.uvprojx
+!pyproject.toml
+!uv.lock
 
 # Allow C source and header files
 !src/
@@ -25,9 +29,8 @@
 !src/**/*.h
 !include/
 !include/**/*.h
-!drivers/
-!drivers/**/*.c
-!drivers/**/*.h
+!data_acquisition/
+!data_acquisition/**/*.py
 
 # Allow RTE Configuration
 !RTE/
