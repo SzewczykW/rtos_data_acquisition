@@ -56,12 +56,12 @@
 //     <s.15>Primary DNS Server
 //     <i>IP Address of Primary DNS Server in text representation
 //     <i>Default: "8.8.8.8"
-#define ETH0_IP4_PRIMARY_DNS "8.8.8.8"
+#define ETH0_IP4_PRIMARY_DNS ""
 
 //     <s.15>Secondary DNS Server
 //     <i>IP Address of Secondary DNS Server in text representation
 //     <i>Default: "8.8.4.4"
-#define ETH0_IP4_SECONDARY_DNS "8.8.4.4"
+#define ETH0_IP4_SECONDARY_DNS ""
 
 //     <e>IP Fragmentation
 //     <i>This option enables fragmentation of outgoing IP datagrams,
@@ -119,13 +119,13 @@
 //     <q>NetBIOS Name Service
 //     <i>When this option is enabled, the embedded host can be
 //     <i>accessed by its name on local LAN using NBNS protocol.
-#define ETH0_NBNS_ENABLE 1
+#define ETH0_NBNS_ENABLE 0
 
 //     <e>Dynamic Host Configuration
 //     <i>When this option is enabled, local IP address, Net Mask
 //     <i>and Default Gateway are obtained automatically from
 //     <i>the DHCP Server on local LAN.
-#define ETH0_DHCP_ENABLE 1
+#define ETH0_DHCP_ENABLE 0
 
 //       <s.40>Vendor Class Identifier
 //       <i>This value is optional. If specified, it is added

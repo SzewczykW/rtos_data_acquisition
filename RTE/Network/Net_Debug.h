@@ -22,7 +22,7 @@
 
 //   <e>System
 //   <i>Enable generation of system diagnostic messages
-#define NET_DEBUG_SYSTEM 1
+#define NET_DEBUG_SYSTEM 0
 
 //     <o>Memory Management  <0=>Off <1=>Errors <2=>All
 //     <i>Configure Dynamic Memory Management diagnostics
@@ -51,7 +51,7 @@
 
 //   <e>IPv4
 //   <i>Enable generation of IPv4 diagnostic messages
-#define NET_DEBUG_IP4 1
+#define NET_DEBUG_IP4 0
 
 //     <o>IPv4 Core  <0=>Off <1=>Errors <2=>All
 //     <i>Configure IPv4 Core diagnostics
@@ -80,7 +80,7 @@
 
 //   <e>IPv6
 //   <i>Enable generation of IPv6 diagnostic messages
-#define NET_DEBUG_IP6 1
+#define NET_DEBUG_IP6 0
 
 //     <o>IPv6 Core  <0=>Off <1=>Errors <2=>All
 //     <i>Configure IPv6 Core diagnostics
@@ -105,7 +105,7 @@
 
 //   <e>Socket
 //   <i>Enable generation of socket diagnostic messages
-#define NET_DEBUG_SOCKET 1
+#define NET_DEBUG_SOCKET 0
 
 //     <o>UDP Socket  <0=>Off <1=>Errors <2=>All
 //     <i>Configure UDP native socket diagnostics
@@ -122,7 +122,7 @@
 
 //   <e>Service
 //   <i>Enable generation of network service diagnostic messages
-#define NET_DEBUG_SERVICE 1
+#define NET_DEBUG_SERVICE 0
 
 //     <o>HTTP Server  <0=>Off <1=>Errors <2=>All
 //     <i>Configure HTTP server diagnostics

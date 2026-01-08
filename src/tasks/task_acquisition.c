@@ -121,6 +121,7 @@ int acquisition_init(void)
     {
         return 0;
     }
+    LOG_INFO("Initializing acquisition module...");
 
     adc_status_t status = adc_init(current_channel);
     if (status != ADC_OK)
@@ -128,6 +129,7 @@ int acquisition_init(void)
         LOG_ERROR("ADC initialization failed: %d", status);
         return -1;
     }
+    LOG_INFO("ADC initialized on channel %u", current_channel);
 
     memset(&stats, 0, sizeof(stats));
     sample_index = 0;

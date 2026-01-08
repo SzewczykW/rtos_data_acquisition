@@ -195,7 +195,7 @@
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
             <RoSelD>3</RoSelD>
-            <RwSelD>4</RwSelD>
+            <RwSelD>3</RwSelD>
             <CodeSel>0</CodeSel>
             <OptFeed>0</OptFeed>
             <NoZi1>0</NoZi1>
@@ -371,7 +371,7 @@
             <TextAddressRange>0x00000000</TextAddressRange>
             <DataAddressRange>0x10000000</DataAddressRange>
             <pXoBase></pXoBase>
-            <ScatterFile></ScatterFile>
+            <ScatterFile>.\lpc1768_iram2.sct</ScatterFile>
             <IncludeLibs></IncludeLibs>
             <IncludeLibsPath></IncludeLibsPath>
             <Misc></Misc>
@@ -508,9 +508,6 @@
         <Group>
           <GroupName>::Network</GroupName>
         </Group>
-        <Group>
-          <GroupName>::RTOS</GroupName>
-        </Group>
       </Groups>
     </Target>
   </Targets>
@@ -573,38 +570,8 @@
           <targetInfo name="data_acquistion"/>
         </targetInfos>
       </component>
-      <component Capiversion="2.3.0" Cclass="CMSIS" Cgroup="RTOS2" Csub="FreeRTOS" Cvariant="Cortex-M" Cvendor="ARM" Cversion="11.2.0" condition="CMSIS RTOS2 FreeRTOS CortexM" ymlID="CMSIS:RTOS2:FreeRTOS&amp;Cortex-M">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
-      <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Config" Cvariant="CMSIS RTOS2" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Config CMSIS RTOS2" ymlID="RTOS&amp;FreeRTOS:Config&amp;CMSIS RTOS2">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
-      <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Core" Cvariant="Cortex-M" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Core CM" ymlID="RTOS&amp;FreeRTOS:Core&amp;Cortex-M">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
-      <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Event Groups" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Event Groups" ymlID="RTOS&amp;FreeRTOS:Event Groups">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
-      <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Heap" Cvariant="Heap_4" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Heap" ymlID="RTOS&amp;FreeRTOS:Heap&amp;Heap_4">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
-      </component>
-      <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Timers" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Timers" ymlID="RTOS&amp;FreeRTOS:Timers">
-        <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
+      <component Capiversion="2.3.0" Cclass="CMSIS" Cgroup="RTOS2" Csub="Keil RTX5" Cvariant="Library" Cvendor="ARM" Cversion="5.9.0" condition="RTX5" ymlID="CMSIS:RTOS2:Keil RTX5&amp;Library">
+        <package name="CMSIS-RTX" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="5.9.0"/>
         <targetInfos>
           <targetInfo name="data_acquistion"/>
         </targetInfos>
@@ -671,6 +638,22 @@
       </component>
     </components>
     <files>
+      <file attr="config" category="source" name="Config\RTX_Config.c" version="5.2.0">
+        <instance index="0">RTE\CMSIS\RTX_Config.c</instance>
+        <component Capiversion="2.3.0" Cclass="CMSIS" Cgroup="RTOS2" Csub="Keil RTX5" Cvariant="Library" Cvendor="ARM" Cversion="5.9.0" condition="RTX5"/>
+        <package name="CMSIS-RTX" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="5.9.0"/>
+        <targetInfos>
+          <targetInfo name="data_acquistion"/>
+        </targetInfos>
+      </file>
+      <file attr="config" category="header" name="Config\RTX_Config.h" version="5.6.0">
+        <instance index="0">RTE\CMSIS\RTX_Config.h</instance>
+        <component Capiversion="2.3.0" Cclass="CMSIS" Cgroup="RTOS2" Csub="Keil RTX5" Cvariant="Library" Cvendor="ARM" Cversion="5.9.0" condition="RTX5"/>
+        <package name="CMSIS-RTX" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="5.9.0"/>
+        <targetInfos>
+          <targetInfo name="data_acquistion"/>
+        </targetInfos>
+      </file>
       <file attr="config" category="header" condition="LPC1700 CMSIS Device" name="RTE_Driver\Config\RTE_Device.h" version="2.4.1">
         <instance index="0">RTE\Device\LPC1768\RTE_Device.h</instance>
         <component Cclass="Device" Cgroup="Startup" Cvendor="Keil" Cversion="1.0.0" condition="LPC17xx CMSIS Device ARMCC"/>
@@ -728,12 +711,10 @@
         </targetInfos>
       </file>
       <file attr="config" category="header" name="CMSIS\RTOS2\FreeRTOS\Config\FreeRTOSConfig.h" version="10.7.0">
-        <instance index="0">RTE\RTOS\FreeRTOSConfig.h</instance>
+        <instance index="0" removed="1">RTE\RTOS\FreeRTOSConfig.h</instance>
         <component Cbundle="FreeRTOS" Cclass="RTOS" Cgroup="Config" Cvariant="CMSIS RTOS2" Cvendor="ARM" Cversion="11.2.0" condition="FreeRTOS Config CMSIS RTOS2"/>
         <package name="CMSIS-FreeRTOS" schemaVersion="1.7.40" url="https://www.keil.com/pack/" vendor="ARM" version="11.2.0"/>
-        <targetInfos>
-          <targetInfo name="data_acquistion"/>
-        </targetInfos>
+        <targetInfos/>
       </file>
     </files>
   </RTE>

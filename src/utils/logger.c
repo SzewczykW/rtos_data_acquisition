@@ -8,6 +8,7 @@
 #include "logger.h"
 
 #include "Driver_USART.h"
+#include "FreeRTOSConfig.h"
 #include "LPC17xx.h"
 #include "RTE_Components.h"
 #include "RTE_Device.h"
@@ -18,22 +19,72 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Auto-select USART driver based on RTE_Device.h configuration */
+/* DMA interrupt priority for FreeRTOS compatibility.
+ * UART1 uses DMA (RTE_UART1_DMA_TX_EN=1), so TX complete callback
+ * comes from DMA_IRQHandler, not UART1_IRQHandler.
+ * Priority must be >= 16 to safely call osSemaphoreRelease from ISR.
+ */
+
+/* Auto-select USART driver + determine which IRQ delivers TX-complete callback
+ * (DMA_IRQn when RTE_UARTx_DMA_TX_EN==1, otherwise UARTx_IRQn).
+ */
 #if defined(RTE_UART0) && (RTE_UART0 == 1)
+
 extern ARM_DRIVER_USART Driver_USART0;
-#define USART_DRIVER (&Driver_USART0)
-#elif defined(RTE_UART1) && (RTE_UART1 == 1)
-extern ARM_DRIVER_USART Driver_USART1;
-#define USART_DRIVER (&Driver_USART1)
-#elif defined(RTE_UART2) && (RTE_UART2 == 1)
-extern ARM_DRIVER_USART Driver_USART2;
-#define USART_DRIVER (&Driver_USART2)
-#elif defined(RTE_UART3) && (RTE_UART3 == 1)
-extern ARM_DRIVER_USART Driver_USART3;
-#define USART_DRIVER (&Driver_USART3)
+#define USART_DRIVER     (&Driver_USART0)
+#define LOGGER_UART_IRQn UART0_IRQn
+#if defined(RTE_UART0_DMA_TX_EN) && (RTE_UART0_DMA_TX_EN == 1)
+#define LOGGER_TX_USES_DMA 1
 #else
-#error                                                                                 \
-    "No USART enabled in RTE_Device.h. Enable RTE_UART0, RTE_UART1, RTE_UART2 or RTE_UART3"
+#define LOGGER_TX_USES_DMA 0
+#endif
+
+#elif defined(RTE_UART1) && (RTE_UART1 == 1)
+
+extern ARM_DRIVER_USART Driver_USART1;
+#define USART_DRIVER     (&Driver_USART1)
+#define LOGGER_UART_IRQn UART1_IRQn
+#if defined(RTE_UART1_DMA_TX_EN) && (RTE_UART1_DMA_TX_EN == 1)
+#define LOGGER_TX_USES_DMA 1
+#else
+#define LOGGER_TX_USES_DMA 0
+#endif
+
+#elif defined(RTE_UART2) && (RTE_UART2 == 1)
+
+extern ARM_DRIVER_USART Driver_USART2;
+#define USART_DRIVER     (&Driver_USART2)
+#define LOGGER_UART_IRQn UART2_IRQn
+#if defined(RTE_UART2_DMA_TX_EN) && (RTE_UART2_DMA_TX_EN == 1)
+#define LOGGER_TX_USES_DMA 1
+#else
+#define LOGGER_TX_USES_DMA 0
+#endif
+
+#elif defined(RTE_UART3) && (RTE_UART3 == 1)
+
+extern ARM_DRIVER_USART Driver_USART3;
+#define USART_DRIVER     (&Driver_USART3)
+#define LOGGER_UART_IRQn UART3_IRQn
+#if defined(RTE_UART3_DMA_TX_EN) && (RTE_UART3_DMA_TX_EN == 1)
+#define LOGGER_TX_USES_DMA 1
+#else
+#define LOGGER_TX_USES_DMA 0
+#endif
+
+#else
+#error "No USART enabled in RTE_Device.h. Enable RTE_UART0/1/2/3."
+#endif
+
+#if (LOGGER_TX_USES_DMA == 1)
+#define LOGGER_TX_IRQn DMA_IRQn
+#else
+#define LOGGER_TX_IRQn LOGGER_UART_IRQn
+#endif
+
+#ifndef LOGGER_IRQ_PRIO
+#define LOGGER_IRQ_PRIO                                                                \
+    (configMAX_SYSCALL_INTERRUPT_PRIORITY >> (8U - __NVIC_PRIO_BITS))
 #endif
 
 #define LOGGER_BUFFER_SIZE      256  /**< Internal buffer size */
@@ -171,12 +222,8 @@ logger_status_t logger_init(void)
         goto cleanup_power;
     }
 
-    /* DMA interrupt priority for FreeRTOS compatibility.
-     * UART1 uses DMA (RTE_UART1_DMA_TX_EN=1), so TX complete callback
-     * comes from DMA_IRQHandler, not UART1_IRQHandler.
-     * Priority must be >= 16 to safely call osSemaphoreRelease from ISR.
-     */
-    NVIC_SetPriority(DMA_IRQn, 16);
+    NVIC_SetPriority(LOGGER_TX_IRQn, LOGGER_IRQ_PRIO);
+    NVIC_SetPriority(LOGGER_UART_IRQn, LOGGER_IRQ_PRIO);
 
     logger_initialized = 1;
     return LOGGER_OK;

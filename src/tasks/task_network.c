@@ -362,7 +362,6 @@ int network_init(void)
     {
         return 0;
     }
-
     LOG_INFO("Initializing network subsystem...");
 
     netStatus status = netInitialize();
@@ -371,19 +370,23 @@ int network_init(void)
         LOG_ERROR("Network stack initialization failed: %d", status);
         return -1;
     }
+    LOG_INFO("Network stack initialized");
 
+    LOG_INFO("Initializing protocol module...");
     if (protocol_init() != PROTO_STATUS_OK)
     {
         LOG_ERROR("Protocol initialization failed");
         return -1;
     }
+    LOG_INFO("Protocol module initialized");
 
+    LOG_INFO("Initializing UDP socket...");
     if (udp_socket_init() != UDP_STATUS_OK)
     {
         LOG_ERROR("UDP socket module initialization failed");
         return -1;
     }
-
+    LOG_INFO("UDP socket module initialized");
     initialized = true;
     LOG_INFO("Network subsystem initialized");
 

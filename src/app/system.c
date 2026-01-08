@@ -7,6 +7,7 @@
 
 #include "system.h"
 
+#include "FreeRTOS.h"
 #include "LPC17xx.h"
 #include "config.h"
 #include "logger.h"
@@ -26,18 +27,27 @@ int system_init(void)
     {
         return -1;
     }
+    LOG_INFO("Logger initialized");
 
+    LOG_INFO(
+        "Free heap: %lu, min ever: %lu", (unsigned long)xPortGetFreeHeapSize(),
+        (unsigned long)xPortGetMinimumEverFreeHeapSize()
+    );
+    LOG_INFO("Initializing network...");
     if (network_init() != 0)
     {
         LOG_ERROR("Network initialization failed");
         return -1;
     }
+    LOG_INFO("Network initialized");
 
+    LOG_INFO("Initializing acquisition...");
     if (acquisition_init() != 0)
     {
         LOG_ERROR("Acquisition initialization failed");
         return -1;
     }
+    LOG_INFO("Acquisition initialized");
 
     return 0;
 }

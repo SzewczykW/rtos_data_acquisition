@@ -8,25 +8,26 @@
 #include "panic.h"
 
 #include "LPC17xx.h"
+#include "RTE_Device.h"
 #include "config.h"
 
 #include <string.h>
 
 /* Map USART number to LPC17xx UART peripheral */
-#if (USART_NUM == 0)
+#if defined(RTE_UART0) && (RTE_UART0 == 1)
 #define PANIC_UART      LPC_UART0
 #define PANIC_PCONP_BIT (1UL << 3) /* PCUART0 */
-#elif (USART_NUM == 1)
+#elif defined(RTE_UART1) && (RTE_UART1 == 1)
 #define PANIC_UART      LPC_UART1
 #define PANIC_PCONP_BIT (1UL << 4) /* PCUART1 */
-#elif (USART_NUM == 2)
+#elif defined(RTE_UART2) && (RTE_UART2 == 1)
 #define PANIC_UART      LPC_UART2
 #define PANIC_PCONP_BIT (1UL << 24) /* PCUART2 */
-#elif (USART_NUM == 3)
+#elif defined(RTE_UART3) && (RTE_UART3 == 1)
 #define PANIC_UART      LPC_UART3
 #define PANIC_PCONP_BIT (1UL << 25) /* PCUART3 */
 #else
-#error "Invalid USART_NUM in config.h"
+#error "No USART enabled in RTE_Device.h. Enable RTE_UART0/1/2/3."
 #endif
 
 /* UART Line Status Register bits */
@@ -60,6 +61,7 @@ static void panic_print(const char *msg)
 void panic(const char *msg, const char *info)
 {
     __disable_irq();
+    LPC_SC->PCONP |= PANIC_PCONP_BIT;
 
     panic_print("\r\n*** PANIC ***\r\n");
     panic_print(msg);
