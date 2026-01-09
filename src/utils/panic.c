@@ -1,6 +1,7 @@
 /**
  * @file panic.c
- * @brief System panic and error handlers for FreeRTOS
+ * @brief System panic and error handlers for CMSIS-RTX5 RTOS
+ * @brief This module expects that the UART used for logging is already initialized.
  * @author Wiktor Szewczyk
  * @author Patryk Madej
  */
@@ -9,7 +10,6 @@
 
 #include "LPC17xx.h"
 #include "RTE_Device.h"
-#include "config.h"
 
 #include <string.h>
 

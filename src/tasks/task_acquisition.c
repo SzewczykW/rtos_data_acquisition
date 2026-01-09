@@ -7,8 +7,8 @@
 
 #include "task_acquisition.h"
 
-#include "cmsis_os2.h"
 #include "logger.h"
+#include "panic.h"
 #include "protocol.h"
 #include "task_network.h"
 
@@ -17,21 +17,21 @@
 /** Acquisition loop delay in ms (controls sample rate) */
 #define ACQUISITION_LOOP_DELAY_MS 1
 
-static osThreadId_t acquisition_thread = NULL;
+static osThreadId_t         acquisition_thread      = NULL;
 static const osThreadAttr_t acquisition_thread_attr = {
-    .name = "AcquisitionTask",
-    .stack_size = TASK_ACQUISITION_STACK_SIZE * sizeof(uint32_t),
-    .priority = TASK_ACQUISITION_PRIORITY,
+    .name       = "AcquisitionTask",
+    .stack_size = TASK_ACQUISITION_STACK_SIZE,
+    .priority   = TASK_ACQUISITION_PRIORITY,
 };
-static volatile acquisition_state_t current_state = ACQ_STATE_IDLE;
-static acquisition_stats_t stats = {0};
-static adc_channel_t current_channel = TASK_ACQUISITION_DEFAULT_CHANNEL;
+static volatile acquisition_state_t current_state   = ACQ_STATE_IDLE;
+static acquisition_stats_t          stats           = {0};
+static adc_channel_t                current_channel = TASK_ACQUISITION_DEFAULT_CHANNEL;
 static uint16_t threshold_mv = TASK_ACQUISITION_DEFAULT_THRESHOLD_MV;
-static uint16_t batch_size = ACQUISITION_DEFAULT_BATCH_SIZE;
+static uint16_t batch_size   = ACQUISITION_DEFAULT_BATCH_SIZE;
 static uint16_t sample_buffer[ACQUISITION_MAX_BATCH_SIZE];
 static uint16_t sample_index = 0;
-static bool initialized = false;
-static uint8_t tx_buffer[512];
+static bool     initialized  = false;
+static uint8_t  tx_buffer[512];
 
 /**
  * @brief Convert millivolts to ADC value
@@ -85,7 +85,7 @@ static void acquisition_task(void *argument)
 
             if (sample_index >= batch_size)
             {
-                size_t packet_len;
+                size_t            packet_len;
                 protocol_status_t proto_status = protocol_build_data_packet(
                     tx_buffer, sizeof(tx_buffer), current_channel, sample_buffer,
                     sample_index, &packet_len
@@ -121,23 +121,18 @@ int acquisition_init(void)
     {
         return 0;
     }
-    LOG_INFO("Initializing acquisition module...");
 
-    adc_status_t status = adc_init(current_channel);
-    if (status != ADC_OK)
+    if (adc_init(current_channel) != ADC_OK)
     {
-        LOG_ERROR("ADC initialization failed: %d", status);
+        panic("ADC initialization failed", NULL);
         return -1;
     }
-    LOG_INFO("ADC initialized on channel %u", current_channel);
 
     memset(&stats, 0, sizeof(stats));
-    sample_index = 0;
+    sample_index  = 0;
     current_state = ACQ_STATE_IDLE;
 
     initialized = true;
-    LOG_INFO("Acquisition module initialized");
-
     return 0;
 }
 
@@ -175,10 +170,10 @@ int acquisition_start(void)
 
     if (current_state == ACQ_STATE_RUNNING)
     {
-        return 0; /* Already running */
+        return 0;
     }
 
-    sample_index = 0;
+    sample_index  = 0;
     current_state = ACQ_STATE_RUNNING;
     LOG_INFO(
         "Acquisition started on channel %u, threshold %u mV", current_channel,
@@ -285,7 +280,7 @@ int acquisition_set_batch_size(uint16_t size)
         return -1;
     }
 
-    batch_size = size;
+    batch_size   = size;
     sample_index = 0; /* Reset buffer on batch size change */
     LOG_DEBUG("Batch size set to %u samples", batch_size);
     return 0;

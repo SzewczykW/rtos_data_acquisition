@@ -1,6 +1,6 @@
 /**
  * @file panic.h
- * @brief System panic and error handlers for FreeRTOS
+ * @brief System panic and error handlers for CMSIS-RTX5 RTOS
  * @author Wiktor Szewczyk
  * @author Patryk Madej
  */

@@ -10,6 +10,7 @@
 #include "Net_Config_UDP.h"
 #include "cmsis_os2.h"
 #include "logger.h"
+#include "panic.h"
 #include "rl_net.h"
 
 #include <stdio.h>
@@ -23,21 +24,35 @@
 #define SOCKET_FLAG_USED     (1U << 0)
 #define SOCKET_FLAG_BOUND    (1U << 1)
 #define SOCKET_FLAG_CALLBACK (1U << 2)
+#define SOCKET_FLAG_CLOSING  (1U << 3)
+
+/* RX packet stored in queue (allocated from per-socket memory pool) */
+typedef struct
+{
+    udp_endpoint_t remote;
+    uint16_t       len;
+    uint8_t        data[UDP_RECV_BUFFER_SIZE];
+} udp_rx_pkt_t;
+
+/* Special queue item meaning: socket is closing */
+#define UDP_RX_PKT_CLOSING ((udp_rx_pkt_t *)(uintptr_t)1U)
 
 /**
  * @brief Internal socket structure
  */
 typedef struct udp_socket
 {
-    int32_t net_socket;                        /**< Network stack socket handle */
-    uint16_t local_port;                       /**< Bound local port */
-    uint8_t flags;                             /**< Socket state flags */
-    udp_recv_callback_t callback;              /**< Receive callback */
-    void *callback_user_data;                  /**< User data for callback */
-    osSemaphoreId_t recv_sem;                  /**< Semaphore for blocking recv */
-    uint8_t recv_buffer[UDP_RECV_BUFFER_SIZE]; /**< Receive buffer */
-    size_t recv_len;                           /**< Received data length */
-    udp_endpoint_t recv_remote;                /**< Remote endpoint of received data */
+    int32_t             net_socket;         /**< Network stack socket handle */
+    uint16_t            local_port;         /**< Bound local port */
+    uint8_t             flags;              /**< Socket state flags */
+    udp_recv_callback_t callback;           /**< Receive callback */
+    void               *callback_user_data; /**< User data for callback */
+    uint8_t             recv_buffer[UDP_RECV_BUFFER_SIZE]; /**< Receive buffer */
+    size_t              recv_len;                          /**< Received data length */
+    udp_endpoint_t      recv_remote; /**< Remote endpoint of received data */
+    osMessageQueueId_t  rx_queue;    /**< Queue of udp_rx_pkt_t* */
+    osMemoryPoolId_t    rx_pool;     /**< Pool of udp_rx_pkt_t blocks */
+    uint32_t            rx_dropped;  /**< Dropped RX packets */
 } udp_socket_internal_t;
 
 /** Socket pool */
@@ -48,6 +63,35 @@ static bool module_initialized = false;
 
 /** Mutex for socket pool access */
 static osMutexId_t socket_mutex = NULL;
+
+static volatile bool s_eth_link_known = false;
+static volatile bool s_eth_link_up    = false;
+
+void netETH_Notify(uint32_t if_num, netETH_Event event, uint32_t val)
+{
+    (void)val;
+
+    if (if_num != 0U)
+    {
+        return;
+    }
+
+    switch (event)
+    {
+        case netETH_LinkUp:
+            s_eth_link_known = true;
+            s_eth_link_up    = true;
+            break;
+
+        case netETH_LinkDown:
+            s_eth_link_known = true;
+            s_eth_link_up    = false;
+            break;
+
+        default:
+            break;
+    }
+}
 
 /**
  * @brief Find socket by network handle
@@ -79,6 +123,7 @@ static udp_socket_internal_t *allocate_socket(void)
             return &socket_pool[i];
         }
     }
+
     return NULL;
 }
 
@@ -87,10 +132,23 @@ static udp_socket_internal_t *allocate_socket(void)
  */
 static void free_socket(udp_socket_internal_t *sock)
 {
-    if (sock->recv_sem != NULL)
+    /* Wake any blocking receiver (best-effort) */
+    if (sock->rx_queue != NULL)
     {
-        osSemaphoreDelete(sock->recv_sem);
-        sock->recv_sem = NULL;
+        udp_rx_pkt_t *closing = UDP_RX_PKT_CLOSING;
+        (void)osMessageQueuePut(sock->rx_queue, &closing, 0U, 0U);
+    }
+
+    if (sock->rx_queue != NULL)
+    {
+        osMessageQueueDelete(sock->rx_queue);
+        sock->rx_queue = NULL;
+    }
+
+    if (sock->rx_pool != NULL)
+    {
+        osMemoryPoolDelete(sock->rx_pool);
+        sock->rx_pool = NULL;
     }
 
     memset(sock, 0, sizeof(udp_socket_internal_t));
@@ -120,7 +178,7 @@ static void net_addr_to_endpoint(const NET_ADDR *addr, udp_endpoint_t *endpoint)
 static void endpoint_to_net_addr(const udp_endpoint_t *endpoint, NET_ADDR *addr)
 {
     addr->addr_type = NET_ADDR_IP4;
-    addr->port = endpoint->port;
+    addr->port      = endpoint->port;
     memcpy(addr->addr, endpoint->ip.addr, 4);
 }
 
@@ -130,37 +188,62 @@ static void endpoint_to_net_addr(const udp_endpoint_t *endpoint, NET_ADDR *addr)
 static uint32_t
 udp_net_callback(int32_t socket, const NET_ADDR *addr, const uint8_t *buf, uint32_t len)
 {
-    udp_socket_internal_t *sock = find_socket_by_net_handle(socket);
-    if (sock == NULL)
-    {
-        return 0;
-    }
-
-    /* Convert network address to endpoint */
+    LOG_DEBUG("Received UDP packet on socket %d, length %u", socket, len);
     udp_endpoint_t remote;
     net_addr_to_endpoint(addr, &remote);
 
-    /* If callback registered, call it */
-    if (sock->flags & SOCKET_FLAG_CALLBACK && sock->callback != NULL)
+    osMutexAcquire(socket_mutex, osWaitForever);
+
+    udp_socket_internal_t *sock = find_socket_by_net_handle(socket);
+    if (sock == NULL || !(sock->flags & SOCKET_FLAG_USED) ||
+        (sock->flags & SOCKET_FLAG_CLOSING))
     {
-        sock->callback(sock, &remote, buf, len, sock->callback_user_data);
+        osMutexRelease(socket_mutex);
+        return 0;
     }
-    else
+
+    /* If user callback registered, call it WITHOUT holding mutex */
+    if ((sock->flags & SOCKET_FLAG_CALLBACK) && (sock->callback != NULL))
     {
-        /* Store data for blocking recv */
-        osMutexAcquire(socket_mutex, osWaitForever);
-
-        size_t copy_len = (len < UDP_RECV_BUFFER_SIZE) ? len : UDP_RECV_BUFFER_SIZE;
-        memcpy(sock->recv_buffer, buf, copy_len);
-        sock->recv_len = copy_len;
-        sock->recv_remote = remote;
-
+        udp_recv_callback_t cb = sock->callback;
+        void               *ud = sock->callback_user_data;
         osMutexRelease(socket_mutex);
 
-        /* Signal data available */
-        osSemaphoreRelease(sock->recv_sem);
+        cb((udp_socket_handle_t)sock, &remote, buf, (size_t)len, ud);
+        return 1;
     }
 
+    /* Blocking receive mode: queue packet */
+    if (sock->rx_pool == NULL || sock->rx_queue == NULL)
+    {
+        osMutexRelease(socket_mutex);
+        return 0;
+    }
+
+    udp_rx_pkt_t *pkt = (udp_rx_pkt_t *)osMemoryPoolAlloc(sock->rx_pool, 0U);
+    if (pkt == NULL)
+    {
+        sock->rx_dropped++;
+        osMutexRelease(socket_mutex);
+        return 0;
+    }
+
+    pkt->remote       = remote;
+    uint32_t copy_len = (len < UDP_RECV_BUFFER_SIZE) ? len : UDP_RECV_BUFFER_SIZE;
+    pkt->len          = (uint16_t)copy_len;
+    memcpy(pkt->data, buf, copy_len);
+
+    udp_rx_pkt_t *msg = pkt;
+    osStatus_t    qst = osMessageQueuePut(sock->rx_queue, &msg, 0U, 0U);
+    if (qst != osOK)
+    {
+        (void)osMemoryPoolFree(sock->rx_pool, pkt);
+        sock->rx_dropped++;
+        osMutexRelease(socket_mutex);
+        return 0;
+    }
+
+    osMutexRelease(socket_mutex);
     return 1;
 }
 
@@ -172,24 +255,22 @@ udp_status_t udp_socket_init(void)
     }
 
     const osMutexAttr_t mutex_attr = {
-        .name = "udp_mutex",
+        .name      = "udp_mutex",
         .attr_bits = osMutexRecursive | osMutexPrioInherit,
-        .cb_mem = NULL,
-        .cb_size = 0
+        .cb_mem    = NULL,
+        .cb_size   = 0
     };
 
     socket_mutex = osMutexNew(&mutex_attr);
     if (socket_mutex == NULL)
     {
-        LOG_ERROR("Failed to create UDP socket mutex");
+        panic("Failed to create UDP socket mutex", NULL);
         return UDP_STATUS_NO_MEMORY;
     }
 
     memset(socket_pool, 0, sizeof(socket_pool));
 
     module_initialized = true;
-    LOG_INFO("UDP socket module initialized");
-
     return UDP_STATUS_OK;
 }
 
@@ -222,9 +303,9 @@ udp_status_t udp_socket_deinit(void)
 
 udp_status_t udp_socket_create(udp_socket_handle_t *handle, uint16_t local_port)
 {
-    udp_status_t result;
+    udp_status_t           result;
     udp_socket_internal_t *sock;
-    netStatus net_status;
+    netStatus              net_status;
 
     if (!module_initialized)
     {
@@ -262,15 +343,20 @@ udp_status_t udp_socket_create(udp_socket_handle_t *handle, uint16_t local_port)
         goto cleanup_get_socket;
     }
 
-    const osSemaphoreAttr_t sem_attr = {
-        .name = "udp_recv_sem", .attr_bits = 0, .cb_mem = NULL, .cb_size = 0
-    };
-    sock->recv_sem = osSemaphoreNew(1, 0, &sem_attr);
-    if (sock->recv_sem == NULL)
+    sock->rx_pool = osMemoryPoolNew(UDP_RX_QUEUE_LEN, sizeof(udp_rx_pkt_t), NULL);
+    if (sock->rx_pool == NULL)
     {
-        LOG_ERROR("Failed to create receive semaphore");
+        LOG_ERROR("Failed to create RX memory pool");
         result = UDP_STATUS_NO_MEMORY;
         goto cleanup_open;
+    }
+
+    sock->rx_queue = osMessageQueueNew(UDP_RX_QUEUE_LEN, sizeof(udp_rx_pkt_t *), NULL);
+    if (sock->rx_queue == NULL)
+    {
+        LOG_ERROR("Failed to create RX message queue");
+        result = UDP_STATUS_NO_MEMORY;
+        goto cleanup_pool;
     }
 
     sock->local_port = local_port;
@@ -278,11 +364,20 @@ udp_status_t udp_socket_create(udp_socket_handle_t *handle, uint16_t local_port)
     sock->recv_len = 0;
 
     *handle = sock;
-    osMutexRelease(socket_mutex);
 
+    uint8_t ip_addr[NET_ADDR_IP4_LEN];
+    netIF_GetOption(
+        NET_IF_CLASS_ETH | 0, netIF_OptionIP4_Address, ip_addr, sizeof(ip_addr)
+    );
+
+    netARP_CacheIP(NET_IF_CLASS_ETH | 0, ip_addr, netARP_CacheFixedIP);
+    osMutexRelease(socket_mutex);
     LOG_DEBUG("UDP socket created on port %u", local_port);
     return UDP_STATUS_OK;
 
+cleanup_pool:
+    osMemoryPoolDelete(sock->rx_pool);
+    sock->rx_pool = NULL;
 cleanup_open:
     netUDP_Close(sock->net_socket);
 cleanup_get_socket:
@@ -314,6 +409,14 @@ udp_status_t udp_socket_close(udp_socket_handle_t handle)
     {
         osMutexRelease(socket_mutex);
         return UDP_STATUS_INVALID_PARAM;
+    }
+
+    sock->flags |= SOCKET_FLAG_CLOSING;
+    if (sock->rx_queue != NULL)
+    {
+        (void)osMessageQueueReset(sock->rx_queue);
+        udp_rx_pkt_t *closing = UDP_RX_PKT_CLOSING;
+        (void)osMessageQueuePut(sock->rx_queue, &closing, 0U, 0U);
     }
 
     netUDP_Close(sock->net_socket);
@@ -391,7 +494,7 @@ udp_status_t udp_socket_sendto(
 )
 {
     udp_endpoint_t endpoint;
-    udp_status_t status;
+    udp_status_t   status;
 
     status = udp_endpoint_create(ip_addr, port, &endpoint);
     if (status != UDP_STATUS_OK)
@@ -426,30 +529,41 @@ udp_status_t udp_socket_recv(
 
     *received = 0;
 
-    osStatus_t os_status = osSemaphoreAcquire(sock->recv_sem, timeout_ms);
-    if (os_status == osErrorTimeout)
-    {
-        return UDP_STATUS_TIMEOUT;
-    }
-    else if (os_status != osOK)
+    if (sock->rx_queue == NULL)
     {
         return UDP_STATUS_ERROR;
     }
 
-    osMutexAcquire(socket_mutex, osWaitForever);
+    udp_rx_pkt_t *pkt       = NULL;
+    osStatus_t    os_status = osMessageQueueGet(sock->rx_queue, &pkt, NULL, timeout_ms);
 
-    size_t copy_len = (sock->recv_len < buffer_len) ? sock->recv_len : buffer_len;
-    memcpy(buffer, sock->recv_buffer, copy_len);
+    if (os_status == osErrorTimeout)
+    {
+        return UDP_STATUS_TIMEOUT;
+    }
+    if (os_status != osOK || pkt == NULL)
+    {
+        return UDP_STATUS_ERROR;
+    }
+
+    if (pkt == UDP_RX_PKT_CLOSING)
+    {
+        return UDP_STATUS_ERROR;
+    }
+
+    size_t copy_len = (pkt->len < buffer_len) ? (size_t)pkt->len : buffer_len;
+    memcpy(buffer, pkt->data, copy_len);
     *received = copy_len;
 
     if (remote != NULL)
     {
-        *remote = sock->recv_remote;
+        *remote = pkt->remote;
     }
 
-    sock->recv_len = 0;
-
-    osMutexRelease(socket_mutex);
+    if (sock->rx_pool != NULL)
+    {
+        (void)osMemoryPoolFree(sock->rx_pool, pkt);
+    }
 
     return UDP_STATUS_OK;
 }
@@ -472,7 +586,7 @@ udp_status_t udp_socket_set_callback(
 
     udp_socket_internal_t *sock = (udp_socket_internal_t *)handle;
 
-    sock->callback = callback;
+    sock->callback           = callback;
     sock->callback_user_data = user_data;
 
     if (callback != NULL)
@@ -491,18 +605,19 @@ udp_status_t udp_socket_set_callback(
 
 bool udp_socket_is_link_up(void)
 {
-    /* Check if interface has an IP address assigned (indicates link is up) */
-    uint8_t ip_addr[NET_ADDR_IP4_LEN];
+    if (s_eth_link_known)
+    {
+        return s_eth_link_up;
+    }
+
+    uint8_t   ip_addr[NET_ADDR_IP4_LEN];
     netStatus status = netIF_GetOption(
         NET_IF_CLASS_ETH | 0, netIF_OptionIP4_Address, ip_addr, sizeof(ip_addr)
     );
 
-    /* If we have a non-zero IP, link is up */
     if (status == netOK)
     {
-        return (
-            ip_addr[0] != 0 || ip_addr[1] != 0 || ip_addr[2] != 0 || ip_addr[3] != 0
-        );
+        return (ip_addr[0] | ip_addr[1] | ip_addr[2] | ip_addr[3]) != 0;
     }
     return false;
 }
@@ -515,7 +630,7 @@ udp_status_t udp_socket_get_local_ip(udp_ipv4_addr_t *ip)
     }
 
     /* Get interface 0 local IP */
-    uint8_t ip_addr[NET_ADDR_IP4_LEN];
+    uint8_t   ip_addr[NET_ADDR_IP4_LEN];
     netStatus status = netIF_GetOption(
         NET_IF_CLASS_ETH | 0, netIF_OptionIP4_Address, ip_addr, sizeof(ip_addr)
     );

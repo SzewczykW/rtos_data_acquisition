@@ -8,6 +8,7 @@
 #ifndef TASK_NETWORK_H
 #define TASK_NETWORK_H
 
+#include "cmsis_os2.h"
 #include "protocol.h"
 #include "udp_socket.h"
 
@@ -19,8 +20,11 @@ extern "C"
 {
 #endif
 
-#define TASK_NETWORK_STACK_SIZE 512
-#define TASK_NETWORK_PRIORITY   osPriorityAboveNormal
+/**< Stack size for the network task */
+#define TASK_NETWORK_STACK_SIZE 4096
+/**< Priority for the network task */
+#define TASK_NETWORK_PRIORITY osPriorityNormal
+/**< Local UDP port for the network task */
 #define TASK_NETWORK_LOCAL_PORT 5000
 
     /**
@@ -28,11 +32,11 @@ extern "C"
      */
     typedef enum
     {
-        NET_STATE_INIT = 0,  /**< Initializing */
-        NET_STATE_WAIT_LINK, /**< Waiting for Ethernet link */
-        NET_STATE_WAIT_IP,   /**< Waiting for IP address (DHCP) */
-        NET_STATE_READY,     /**< Ready to communicate */
-        NET_STATE_ERROR      /**< Error state */
+        NET_STATE_INIT      = 0, /**< Initializing */
+        NET_STATE_WAIT_LINK = 1, /**< Waiting for Ethernet link */
+        NET_STATE_WAIT_IP   = 2, /**< Waiting for IP address */
+        NET_STATE_READY     = 3, /**< Ready to communicate */
+        NET_STATE_ERROR     = 4  /**< Error state */
     } network_state_t;
 
     /**

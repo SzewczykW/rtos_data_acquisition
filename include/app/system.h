@@ -1,6 +1,6 @@
 /**
  * @file system.h
- * @brief System initialization and FreeRTOS hooks
+ * @brief System initialization and CMSIS-RTOS2 RTX5 hooks
  * @author Wiktor Szewczyk
  * @author Patryk Madej
  */
@@ -12,12 +12,6 @@
 extern "C"
 {
 #endif
-
-    /**
-     * @brief Initialize system before starting FreeRTOS scheduler
-     * @return 0 on success, -1 on error
-     */
-    int system_init(void);
 
 #ifdef __cplusplus
 }

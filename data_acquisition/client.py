@@ -6,6 +6,7 @@ import logging
 import socket
 import time
 from dataclasses import dataclass, field
+from ipaddress import IPv4Address
 
 from data_acquisition.protocol import (
     HEADER_SIZE,
@@ -18,13 +19,16 @@ from data_acquisition.protocol import (
     ProtocolBuilder,
     StatusPayload,
 )
+from data_acquisition.storage.binary import BinaryStorage
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Statistics:
-    """Session statistics."""
+    """
+    Session statistics.
+    """
 
     packets_received: int = 0
     samples_received: int = 0
@@ -32,7 +36,9 @@ class Statistics:
     start_time: float = field(default_factory=time.time)
 
     def print_summary(self) -> None:
-        """Print statistics summary to stdout."""
+        """
+        Print statistics summary to stdout.
+        """
         elapsed = time.time() - self.start_time
         rate = self.samples_received / elapsed if elapsed > 0 else 0
 
@@ -50,68 +56,91 @@ class Statistics:
 class DataAcquisitionClient:
     """
     UDP client for LPC1768 data acquisition system.
-
-    This client communicates with an LPC1768-based ADC system over UDP,
-    sending commands and receiving ADC sample data.
     """
 
     def __init__(
         self,
         host: str,
         port: int,
-        local_port: int,
+        storage: BinaryStorage | None = None,
         verbose: bool = False,
-    ) -> None:
+    ):
         """
         Initialize the client.
 
         Args:
             host: Target device IP address
             port: Target UDP port
-            local_port: Local UDP port to bind
             verbose: Enable verbose logging of received data
         """
+        _ = IPv4Address(host)  # Validate IP address
         self.host = host
         self.port = port
-        self.local_port = local_port
-        # self.storage = storage  # Storage is disabled
+        self.storage = storage
         self.verbose = verbose
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._sock.bind(("0.0.0.0", local_port))
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 * 1024 * 1024)
+        tmp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            logger.debug("Determining local IP address...")
+            tmp_socket.connect((self.host, self.port))
+            auto_ip, _ = tmp_socket.getsockname()
+            self.local_ip = auto_ip
+            logger.debug("Local IP address determined: %s", self.local_ip)
+        finally:
+            tmp_socket.close()
+
+        self._sock.bind((self.local_ip, 0))
         self._sock.settimeout(1.0)
 
         self._builder = ProtocolBuilder()
         self.stats = Statistics()
         self.running = False
 
-        logger.info("Client bound to port %d", local_port)
+        logger.info(
+            "Client bound to port %d at %s",
+            self._sock.getsockname()[1],
+            self._sock.getsockname()[0],
+        )
         logger.info("Target: %s:%d", host, port)
 
     def send(self, data: bytes) -> None:
-        """Send raw data to target device."""
+        """
+        Send raw data to target device.
+
+        Args:
+            data: Bytes to send
+        """
         self._sock.sendto(data, (self.host, self.port))
+        logger.debug("Sent %d bytes to %s:%d", len(data), self.host, self.port)
 
     def send_command(self, cmd: Command, param_type: int = 0, param: int = 0) -> None:
-        """Send a command packet."""
+        """
+        Send a command packet.
+
+        Args:
+            cmd: Command code
+            param_type: Parameter type
+            param: Parameter value
+        """
         packet = self._builder.build_command(cmd, param_type, param)
         self.send(packet)
         logger.debug(
             "Sent command: %s (param_type=%d, param=%d)", cmd.name, param_type, param
         )
 
-    # -------------------------------------------------------------------------
-    # High-level commands
-    # -------------------------------------------------------------------------
-
     def start_acquisition(self) -> None:
-        """Start data acquisition on the device."""
+        """
+        Start data acquisition on the device.
+        """
         self.send_command(Command.START_ACQ)
         logger.info("Sent START_ACQ command")
 
     def stop_acquisition(self) -> None:
-        """Stop data acquisition on the device."""
+        """
+        Stop data acquisition on the device.
+        """
         self.send_command(Command.STOP_ACQ)
         logger.info("Sent STOP_ACQ command")
 
@@ -141,43 +170,62 @@ class DataAcquisitionClient:
 
         return None
 
-    # -------------------------------------------------------------------------
-    # Configuration commands
-    # -------------------------------------------------------------------------
-
     def configure_threshold_percent(self, percent: int) -> None:
-        """Set threshold as percentage (0-100)."""
+        """
+        Set threshold as percentage (0-100).
+
+        Args:
+            percent: Threshold percentage
+        """
         self.send_command(Command.CONFIGURE, ConfigParam.THRESHOLD_PERCENT, percent)
         logger.info("Configured threshold: %d%%", percent)
 
     def configure_threshold_mv(self, mv: int) -> None:
-        """Set threshold in millivolts (0-3300)."""
+        """
+        Set threshold in millivolts (0-3300).
+
+        Args:
+            mv: Threshold in millivolts
+        """
         self.send_command(Command.CONFIGURE, ConfigParam.THRESHOLD_MV, mv)
         logger.info("Configured threshold: %d mV", mv)
 
     def configure_batch_size(self, size: int) -> None:
-        """Set batch size - samples per packet (1-500)."""
+        """
+        Set batch size - samples per packet (1-500).
+
+        Args:
+            size: Batch size
+        """
         self.send_command(Command.CONFIGURE, ConfigParam.BATCH_SIZE, size)
         logger.info("Configured batch size: %d", size)
 
     def configure_channel(self, channel: int) -> None:
-        """Set ADC channel (0-7)."""
+        """
+        Set ADC channel (0-7).
+
+        Args:
+            channel: ADC channel
+        """
         self.send_command(Command.CONFIGURE, ConfigParam.CHANNEL, channel)
         logger.info("Configured channel: %d", channel)
 
     def reset_sequence(self) -> None:
-        """Reset sequence counter on device."""
+        """
+        Reset sequence counter on device.
+        """
         self.send_command(Command.CONFIGURE, ConfigParam.RESET_SEQUENCE, 0)
         logger.info("Reset sequence counter")
 
     def set_log_level(self, level: int | LogLevel) -> None:
-        """Set device log level (0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR, 4=CRITICAL, 5=NONE)."""
+        """
+        Set device log level (0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR, 4=CRITICAL, 5=NONE).
+
+        Args:
+            level: Log level
+        """
         self.send_command(Command.CONFIGURE, ConfigParam.LOG_LEVEL, int(level))
         logger.info("Set device log level: %d", level)
-
-    # -------------------------------------------------------------------------
-    # Ping
-    # -------------------------------------------------------------------------
 
     def ping(self) -> float | None:
         """
@@ -203,12 +251,13 @@ class DataAcquisitionClient:
 
         return None
 
-    # -------------------------------------------------------------------------
-    # Receive loop
-    # -------------------------------------------------------------------------
-
     def _handle_data_packet(self, data: bytes) -> None:
-        """Process received data packet (stdout only, no storage)."""
+        """
+        Process received data packet.
+
+        Args:
+            data: Received packet data
+        """
         header = Header.unpack(data)
         payload = DataPayload.unpack(data[HEADER_SIZE:])
 
@@ -216,8 +265,9 @@ class DataAcquisitionClient:
         self.stats.samples_received += len(payload.samples)
         self.stats.bytes_received += len(data)
 
-        # Print all received samples to stdout
-        logger.info(
+        if self.storage:
+            self.storage.store(payload.channel, payload.samples, timestamp=time.time())
+        logger.debug(
             "[%5d] CH%d: %d samples: %s",
             header.sequence,
             payload.channel,
@@ -237,17 +287,44 @@ class DataAcquisitionClient:
                 mv,
             )
 
-    def receive_loop(self) -> None:
+    def receive_loop(
+        self,
+        *,
+        duration_s: float | None = None,
+        max_samples: int | None = None,
+    ) -> None:
         """
         Main receive loop.
 
-        Blocks until stop() is called or KeyboardInterrupt.
+        Stops when either:
+        - stop() is called, or
+        - duration_s elapses, or
+        - max_samples is reached.
         """
         self.running = True
-        logger.info("Starting receive loop (Ctrl+C to stop)")
+        start_t = time.monotonic()
+        deadline = (start_t + duration_s) if duration_s is not None else None
+
+        if duration_s is not None:
+            logger.info("Starting receive loop (duration: %.3f s)", duration_s)
+        elif max_samples is not None:
+            logger.info("Starting receive loop (samples: %d)", max_samples)
+        else:
+            logger.info("Starting receive loop")
 
         while self.running:
             try:
+                if deadline is not None and time.monotonic() >= deadline:
+                    logger.info("Reached duration limit, stopping receive loop")
+                    break
+
+                if (
+                    max_samples is not None
+                    and self.stats.samples_received >= max_samples
+                ):
+                    logger.info("Reached sample limit, stopping receive loop")
+                    break
+
                 data, addr = self._sock.recvfrom(2048)
 
                 if len(data) < HEADER_SIZE:
@@ -281,13 +358,17 @@ class DataAcquisitionClient:
             except Exception as e:
                 logger.error("Error in receive loop: %s", e)
 
+        self.running = False
+
     def stop(self) -> None:
-        """Signal the receive loop to stop."""
+        """
+        Signal the receive loop to stop.
+        """
         self.running = False
 
     def close(self) -> None:
-        """Close client and print statistics (storage disabled)."""
-        # if self.storage:
-        #     self.storage.close()
+        """
+        Close client and print statistics summary.
+        """
         self._sock.close()
         self.stats.print_summary()

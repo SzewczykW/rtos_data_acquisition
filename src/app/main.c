@@ -9,50 +9,54 @@
 #include "cmsis_os2.h"
 #include "logger.h"
 #include "panic.h"
-#include "system.h"
+#include "rl_net.h"
 #include "task_acquisition.h"
+#include "task_init.h"
 #include "task_network.h"
-
-static void init_task(void *arg)
-{
-    (void)arg;
-
-    osThreadExit();
-}
 
 int main(void)
 {
     SystemCoreClockUpdate();
 
-    osStatus_t ret_status;
-    ret_status = osKernelInitialize();
-    if (ret_status != osOK)
+    osStatus_t st = osKernelInitialize();
+    if (st != osOK)
     {
-        panic("osKernelInit failed", NULL);
+        panic("osKernelInitialize failed", NULL);
     }
 
-    if (system_init() != 0)
+    if (init_task_start() != 0)
     {
-        panic("System initialization failed", NULL);
+        panic("init_task_start failed", NULL);
     }
 
-    LOG_INFO("System started...");
-
-    LOG_INFO("Starting tasks...");
-    if (network_task_start() != 0)
+    if (logger_init() != LOGGER_OK)
     {
-        panic("Failed to start network task", NULL);
+        panic("Logger init failed", NULL);
     }
-    LOG_INFO("Network task started");
 
-    if (acquisition_task_start() != 0)
+    if (netInitialize() != netOK)
     {
-        panic("Failed to start acquisition task", NULL);
+        panic("Network stack initialization failed", NULL);
     }
-    LOG_INFO("Acquisition task started");
 
-    osKernelStart();
+    if (network_init() != 0)
+    {
+        panic("Network init failed", NULL);
+    }
 
-    panic("Scheduler failed to start", NULL);
-    return 0;
+    if (acquisition_init() != 0)
+    {
+        panic("Acquisition init failed", NULL);
+    }
+
+    st = osKernelStart();
+    if (st != osOK)
+    {
+        panic("osKernelStart failed", NULL);
+    }
+
+    while (1)
+    {
+        __WFI();
+    }
 }

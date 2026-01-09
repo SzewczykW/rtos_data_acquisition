@@ -7,12 +7,17 @@
 
 #include "task_network.h"
 
-#include "cmsis_os2.h"
+#include "Driver_ETH_MAC.h"
+#include "Driver_ETH_PHY.h"
+#include "LPC17xx.h"
+#include "PIN_LPC17xx.h"
 #include "logger.h"
-#include "protocol.h"
+#include "panic.h"
 #include "rl_net.h"
 #include "task_acquisition.h"
-#include "udp_socket.h"
+
+extern ARM_DRIVER_ETH_MAC Driver_ETH_MAC0;
+extern ARM_DRIVER_ETH_PHY Driver_ETH_PHY0;
 
 #include <string.h>
 
@@ -23,20 +28,20 @@
 /** IP address wait timeout in ms */
 #define IP_WAIT_TIMEOUT 30000
 
-static osThreadId_t network_thread = NULL;
+static osThreadId_t         network_thread      = NULL;
 static const osThreadAttr_t network_thread_attr = {
-    .name = "NetworkTask",
-    .stack_size = TASK_NETWORK_STACK_SIZE * sizeof(uint32_t),
-    .priority = TASK_NETWORK_PRIORITY,
+    .name       = "NetworkTask",
+    .stack_size = TASK_NETWORK_STACK_SIZE,
+    .priority   = TASK_NETWORK_PRIORITY,
 };
-static volatile network_state_t current_state = NET_STATE_INIT;
-static network_stats_t stats = {0};
-static udp_socket_handle_t udp_socket = NULL;
-static udp_endpoint_t remote_target = {0};
-static bool target_set_by_start = false;
-static uint8_t tx_buffer[PACKET_BUFFER_SIZE];
-static uint8_t rx_buffer[PACKET_BUFFER_SIZE];
-static bool initialized = false;
+static volatile network_state_t current_state       = NET_STATE_INIT;
+static network_stats_t          stats               = {0};
+static udp_socket_handle_t      udp_socket          = NULL;
+static udp_endpoint_t           remote_target       = {0};
+static bool                     target_set_by_start = false;
+static uint8_t                  tx_buffer[PACKET_BUFFER_SIZE];
+static uint8_t                  rx_buffer[PACKET_BUFFER_SIZE];
+static bool                     initialized = false;
 
 /**
  * @brief Wait for Ethernet link to come up
@@ -62,7 +67,7 @@ static bool wait_for_link(uint32_t timeout_ms)
  */
 static bool wait_for_ip(uint32_t timeout_ms)
 {
-    uint32_t start = osKernelGetTickCount();
+    uint32_t        start = osKernelGetTickCount();
     udp_ipv4_addr_t ip;
 
     while ((osKernelGetTickCount() - start) < timeout_ms)
@@ -87,9 +92,9 @@ static bool wait_for_ip(uint32_t timeout_ms)
 static void
 handle_command(const protocol_cmd_payload_t *cmd, const udp_endpoint_t *remote)
 {
-    size_t response_len = 0;
-    protocol_status_t status = PROTO_STATUS_ERROR;
-    char ip_str[16];
+    size_t            response_len = 0;
+    protocol_status_t status       = PROTO_STATUS_ERROR;
+    char              ip_str[16];
 
     LOG_INFO(
         "Command received: 0x%02X, param_type: %u, param: %u", cmd->cmd,
@@ -101,10 +106,10 @@ handle_command(const protocol_cmd_payload_t *cmd, const udp_endpoint_t *remote)
         case CMD_GET_STATUS:
         {
             protocol_status_payload_t status_payload = {
-                .acquiring = acquisition_is_running() ? 1 : 0,
-                .channel = acquisition_get_channel(),
+                .acquiring    = acquisition_is_running() ? 1 : 0,
+                .channel      = acquisition_get_channel(),
                 .threshold_mv = acquisition_get_threshold_mv(),
-                .uptime = osKernelGetTickCount() / 1000,
+                .uptime       = osKernelGetTickCount() / 1000,
                 .samples_sent = stats.packets_sent
             };
 
@@ -116,7 +121,7 @@ handle_command(const protocol_cmd_payload_t *cmd, const udp_endpoint_t *remote)
 
         case CMD_START_ACQ:
             /* Set remote target to sender of START command */
-            remote_target = *remote;
+            remote_target       = *remote;
             target_set_by_start = true;
             udp_ipv4_to_string(&remote->ip, ip_str, sizeof(ip_str));
             LOG_INFO("Acquisition target set to %s:%u", ip_str, remote->port);
@@ -215,8 +220,8 @@ static void
 process_received_packet(const uint8_t *data, size_t len, const udp_endpoint_t *remote)
 {
     protocol_header_t header;
-    const uint8_t *payload;
-    size_t payload_len;
+    const uint8_t    *payload;
+    size_t            payload_len;
 
     char remote_ip[16];
     udp_ipv4_to_string(&remote->ip, remote_ip, sizeof(remote_ip));
@@ -316,6 +321,9 @@ static void network_task(void *argument)
     LOG_INFO("UDP socket created on port %u", TASK_NETWORK_LOCAL_PORT);
     current_state = NET_STATE_READY;
 
+    ARM_ETH_LINK_INFO info;
+    info = Driver_ETH_PHY0.GetLinkInfo();
+    LOG_DEBUG("PHY speed=%u duplex=%u\n", (unsigned)info.speed, (unsigned)info.duplex);
     while (1)
     {
         if (!udp_socket_is_link_up())
@@ -323,18 +331,42 @@ static void network_task(void *argument)
             LOG_WARNING("Ethernet link lost");
             current_state = NET_STATE_WAIT_LINK;
 
-            if (!wait_for_link(30000))
+            if (udp_socket != NULL)
             {
+                LOG_DEBUG("Closing UDP socket due to link loss");
+                udp_socket_close(udp_socket);
+                udp_socket = NULL;
+            }
+
+            if (!wait_for_link(10000))
+            {
+                LOG_ERROR("Ethernet link restore timeout");
+                current_state = NET_STATE_ERROR;
+                continue;
+            }
+
+            current_state = NET_STATE_WAIT_IP;
+            if (!wait_for_ip(IP_WAIT_TIMEOUT))
+            {
+                LOG_ERROR("IP address restore timeout");
+                current_state = NET_STATE_ERROR;
+                continue;
+            }
+
+            udp_status_t st = udp_socket_create(&udp_socket, TASK_NETWORK_LOCAL_PORT);
+            if (st != UDP_STATUS_OK)
+            {
+                LOG_ERROR("Failed to recreate UDP socket: %d", st);
                 current_state = NET_STATE_ERROR;
                 continue;
             }
 
             current_state = NET_STATE_READY;
-            LOG_INFO("Ethernet link restored");
+            LOG_INFO("Ethernet link restored (socket reopened)");
         }
 
         udp_endpoint_t remote;
-        size_t received;
+        size_t         received;
 
         udp_status_t recv_status = udp_socket_recv(
             udp_socket, &remote, rx_buffer, sizeof(rx_buffer), &received, 100
@@ -342,6 +374,7 @@ static void network_task(void *argument)
 
         if (recv_status == UDP_STATUS_OK && received > 0)
         {
+            LOG_DEBUG("Packet received: %u bytes", received);
             stats.packets_received++;
             stats.bytes_received += received;
 
@@ -349,8 +382,22 @@ static void network_task(void *argument)
         }
         else if (recv_status != UDP_STATUS_TIMEOUT)
         {
+            LOG_WARNING("UDP receive error: %d", recv_status);
+            LOG_WARNING("UDP error on receive %d", stats.errors);
             stats.errors++;
         }
+        LOG_DEBUG(
+            "IntStatus=%08lX IntEnable=%08lX", LPC_EMAC->IntStatus, LPC_EMAC->IntEnable
+        );
+        LOG_DEBUG(
+            "RxPI=%lu RxCI=%lu TxPI=%lu TxCI=%lu", LPC_EMAC->RxProduceIndex,
+            LPC_EMAC->RxConsumeIndex, LPC_EMAC->TxProduceIndex, LPC_EMAC->TxConsumeIndex
+        );
+        volatile uint32_t *tx_stat = (volatile uint32_t *)LPC_EMAC->TxStatus;
+        uint32_t tci = LPC_EMAC->TxConsumeIndex % LPC_EMAC->TxDescriptorNumber;
+        LOG_DEBUG(
+            "TX: CI=%lu Stat[%lu]=%08lX", LPC_EMAC->TxConsumeIndex, tci, tx_stat[tci]
+        );
 
         osDelay(1);
     }
@@ -362,34 +409,20 @@ int network_init(void)
     {
         return 0;
     }
-    LOG_INFO("Initializing network subsystem...");
 
-    netStatus status = netInitialize();
-    if (status != netOK)
-    {
-        LOG_ERROR("Network stack initialization failed: %d", status);
-        return -1;
-    }
-    LOG_INFO("Network stack initialized");
-
-    LOG_INFO("Initializing protocol module...");
     if (protocol_init() != PROTO_STATUS_OK)
     {
-        LOG_ERROR("Protocol initialization failed");
+        panic("Protocol initialization failed", NULL);
         return -1;
     }
-    LOG_INFO("Protocol module initialized");
 
-    LOG_INFO("Initializing UDP socket...");
     if (udp_socket_init() != UDP_STATUS_OK)
     {
-        LOG_ERROR("UDP socket module initialization failed");
+        panic("UDP socket module initialization failed", NULL);
         return -1;
     }
-    LOG_INFO("UDP socket module initialized");
-    initialized = true;
-    LOG_INFO("Network subsystem initialized");
 
+    initialized = true;
     return 0;
 }
 
@@ -458,7 +491,7 @@ int network_send_data(uint8_t channel, const uint16_t *samples, uint16_t sample_
         return -1;
     }
 
-    size_t packet_len;
+    size_t            packet_len;
     protocol_status_t proto_status = protocol_build_data_packet(
         tx_buffer, sizeof(tx_buffer), channel, samples, sample_count, &packet_len
     );

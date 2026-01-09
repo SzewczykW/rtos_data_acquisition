@@ -35,11 +35,11 @@ typedef enum
 /** ADC status codes */
 typedef enum
 {
-    ADC_OK = 0,            /**< Success */
-    ADC_ERROR_INIT = -1,   /**< Initialization error */
-    ADC_ERROR_BUSY = -2,   /**< Conversion in progress */
-    ADC_ERROR_PARAM = -3,  /**< Invalid parameter */
-    ADC_ERROR_TIMEOUT = -4 /**< Timeout waiting for conversion */
+    ADC_OK            = 0,  /**< Success */
+    ADC_ERROR_INIT    = -1, /**< Initialization error */
+    ADC_ERROR_BUSY    = -2, /**< Conversion in progress */
+    ADC_ERROR_PARAM   = -3, /**< Invalid parameter */
+    ADC_ERROR_TIMEOUT = -4  /**< Timeout waiting for conversion */
 } adc_status_t;
 
 /**

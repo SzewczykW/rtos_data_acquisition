@@ -18,7 +18,7 @@
 //                     <1=>STDIO
 //                     <2=>STDIO + Timestamp
 //   <i>Select output channel for delivery of diagnostic messages
-#define NET_DEBUG_CHANNEL 0
+#define NET_DEBUG_CHANNEL 1
 
 //   <e>System
 //   <i>Enable generation of system diagnostic messages
@@ -26,15 +26,15 @@
 
 //     <o>Memory Management  <0=>Off <1=>Errors <2=>All
 //     <i>Configure Dynamic Memory Management diagnostics
-#define NET_DEBUG_MEM 1
+#define NET_DEBUG_MEM 0
 
 //     <o>ETH Interface  <0=>Off <1=>Errors <2=>All
 //     <i>Configure Ethernet Interface diagnostics
-#define NET_DEBUG_ETH 1
+#define NET_DEBUG_ETH 2
 
 //     <o>WiFi Interface  <0=>Off <1=>Errors <2=>All
 //     <i>Configure WiFi Interface diagnostics
-#define NET_DEBUG_WIFI 1
+#define NET_DEBUG_WIFI 0
 
 //     <o>PPP Interface  <0=>Off <1=>Errors <2=>All
 //     <i>Configure Serial PPP Interface diagnostics
@@ -55,27 +55,27 @@
 
 //     <o>IPv4 Core  <0=>Off <1=>Errors <2=>All
 //     <i>Configure IPv4 Core diagnostics
-#define NET_DEBUG_CORE_IP4 1
+#define NET_DEBUG_CORE_IP4 2
 
 //     <o>Control Message (ICMP) <0=>Off <1=>Errors <2=>All
 //     <i>Configure Internet Control Message diagnostics
-#define NET_DEBUG_ICMP 1
+#define NET_DEBUG_ICMP 2
 
 //     <o>Address Resolution (ARP) <0=>Off <1=>Errors <2=>All
 //     <i>Configure Ethernet Address Resolution diagnostics
-#define NET_DEBUG_ARP 1
+#define NET_DEBUG_ARP 2
 
 //     <o>Group Management (IGMP) <0=>Off <1=>Errors <2=>All
 //     <i>Configure Multicast Group Management diagnostics
-#define NET_DEBUG_IGMP 1
+#define NET_DEBUG_IGMP 0
 
 //     <o>NBNS Client  <0=>Off <1=>Errors <2=>All
 //     <i>Configure NetBIOS Name Service diagnostics
-#define NET_DEBUG_NBNS 1
+#define NET_DEBUG_NBNS 0
 
 //     <o>DHCP Client  <0=>Off <1=>Errors <2=>All
 //     <i>Configure Dynamic Host Configuration diagnostics
-#define NET_DEBUG_DHCP 1
+#define NET_DEBUG_DHCP 0
 //   </e>
 
 //   <e>IPv6
@@ -109,15 +109,15 @@
 
 //     <o>UDP Socket  <0=>Off <1=>Errors <2=>All
 //     <i>Configure UDP native socket diagnostics
-#define NET_DEBUG_UDP 1
+#define NET_DEBUG_UDP 2
 
 //     <o>TCP Socket  <0=>Off <1=>Errors <2=>All
 //     <i>Configure TCP native socket diagnostics
-#define NET_DEBUG_TCP 1
+#define NET_DEBUG_TCP 0
 
 //     <o>BSD Socket  <0=>Off <1=>Errors <2=>All
 //     <i>Configure BSD interface socket diagnostics
-#define NET_DEBUG_BSD 1
+#define NET_DEBUG_BSD 0
 //   </e>
 
 //   <e>Service

@@ -1,81 +1,76 @@
 /**
  * @file system.c
- * @brief System initialization and FreeRTOS hooks implementation
+ * @brief CMSIS-RTOS2 RTX5 hooks implementation
  * @author Wiktor Szewczyk
  * @author Patryk Madej
  */
 
 #include "system.h"
 
-#include "FreeRTOS.h"
 #include "LPC17xx.h"
-#include "config.h"
-#include "logger.h"
 #include "panic.h"
-#include "task_acquisition.h"
-#include "task_network.h"
+#include "rl_net.h"
+#include "rtx_os.h"
 
 #include <stddef.h>
 
 /**
- * @brief Initialize system before starting FreeRTOS scheduler
- * @return 0 on success, negative on error
- */
-int system_init(void)
-{
-    if (logger_init() != LOGGER_OK)
-    {
-        return -1;
-    }
-    LOG_INFO("Logger initialized");
-
-    LOG_INFO(
-        "Free heap: %lu, min ever: %lu", (unsigned long)xPortGetFreeHeapSize(),
-        (unsigned long)xPortGetMinimumEverFreeHeapSize()
-    );
-    LOG_INFO("Initializing network...");
-    if (network_init() != 0)
-    {
-        LOG_ERROR("Network initialization failed");
-        return -1;
-    }
-    LOG_INFO("Network initialized");
-
-    LOG_INFO("Initializing acquisition...");
-    if (acquisition_init() != 0)
-    {
-        LOG_ERROR("Acquisition initialization failed");
-        return -1;
-    }
-    LOG_INFO("Acquisition initialized");
-
-    return 0;
-}
-
-/**
- * @brief Stack overflow hook (required when configCHECK_FOR_STACK_OVERFLOW > 0)
- * @param xTask Handle of task with stack overflow
- * @param pcTaskName Name of task with stack overflow
- */
-void vApplicationStackOverflowHook(void *xTask, char *pcTaskName)
-{
-    (void)xTask;
-
-    panic("Stack overflow", pcTaskName);
-}
-
-/**
- * @brief Malloc failed hook
- */
-void vApplicationMallocFailedHook(void)
-{
-    panic("Memory allocation failed", NULL);
-}
-
-/**
- * @brief Hard Fault Handler override for better debugging
+ * @brief Hard Fault Handler override
  */
 void HardFault_Handler(void)
 {
     panic("Hard Fault exception", NULL);
+}
+
+/**
+ * @brief osRtxErrorNotify override
+ */
+uint32_t osRtxErrorNotify(uint32_t code, void *object_id)
+{
+    (void)object_id;
+    switch (code)
+    {
+        case osRtxErrorStackUnderflow:
+            panic("Stack underflow detected", NULL);
+        case osRtxErrorISRQueueOverflow:
+            panic("ISR Queue overflow detected", NULL);
+        case osRtxErrorTimerQueueOverflow:
+            panic("Timer Queue overflow detected", NULL);
+        case osRtxErrorClibSpace:
+            panic("C library heap space exhausted", NULL);
+        case osRtxErrorClibMutex:
+            panic("C library mutex error", NULL);
+        case osRtxErrorSVC:
+            panic("SVC call error", NULL);
+        default:
+            panic("Unknown RTX error", NULL);
+    }
+}
+
+/**
+ * @brief netHandleError override
+ */
+void netHandleError(netErrorCode error)
+{
+    switch (error)
+    {
+        case netErrorMemAlloc:
+            panic("NetHandleError: Out of mem error", NULL);
+        case netErrorMemFree:
+            panic("NetHandleError: Invalid memory free", NULL);
+        case netErrorMemCorrupt:
+            panic("NetHandleError: Memory corruption detected", NULL);
+        case netErrorConfig:
+            panic("NetHandleError: Invalid net config", NULL);
+        case netErrorRtosCreate:
+            panic("NetHandleError: RTOS object creation failed", NULL);
+        case netErrorUdpAlloc:
+            panic("NetHandleError: Out of UDP Sockets", NULL);
+        case netErrorTcpAlloc:
+            panic("NetHandleError: Out of TCP Sockets", NULL);
+        case netErrorTcpState:
+            panic("NetHandleError: TCP State machine in undefined state", NULL);
+        default:
+            panic("NetHandleError: Unknown error", NULL);
+    }
 }

@@ -20,6 +20,8 @@
 !/LICENSE
 !/README.md
 !/data_acquisition.uvprojx
+!/data_acquisition.uvoptx
+!/lpc1768.sct
 !/pyproject.toml
 !/uv.lock
 

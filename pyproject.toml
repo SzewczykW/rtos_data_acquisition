@@ -1,7 +1,7 @@
 [project]
 name = "data-acquisition"
 version = "1.0.0"
-description = "A simple data acquisition based on LPC1768 microcontroller with FreeRTOS."
+description = "A simple data acquisition based on LPC1768 microcontroller with CMSIS-RTX5 RTOS."
 authors = [
     { name = "Wiktor Szewczyk", email = "wiktorsz2002@gmail.com" },
     { name = "Patryk Madej" }

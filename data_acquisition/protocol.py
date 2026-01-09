@@ -11,17 +11,8 @@ import struct
 from dataclasses import dataclass, field
 from enum import IntEnum
 
-# =============================================================================
-# Protocol Constants (must match protocol.h)
-# =============================================================================
-
 PROTOCOL_MAGIC = 0xDA7A
 HEADER_SIZE = 7  # magic(2) + msg_type(1) + sequence(2) + payload_len(2)
-
-
-# =============================================================================
-# Enums
-# =============================================================================
 
 
 class MsgType(IntEnum):
@@ -71,11 +62,6 @@ class LogLevel(IntEnum):
     ERROR = 3
     CRITICAL = 4
     NONE = 5
-
-
-# =============================================================================
-# Packet Structures
-# =============================================================================
 
 
 @dataclass
@@ -165,11 +151,6 @@ class StatusPayload:
         """Unpack status payload from bytes."""
         acq, ch, thresh, uptime, samples = struct.unpack(cls.FORMAT, data[:12])
         return cls(bool(acq), ch, thresh, uptime, samples)
-
-
-# =============================================================================
-# Protocol Builder
-# =============================================================================
 
 
 class ProtocolBuilder:

@@ -6,12 +6,10 @@ import logging
 import struct
 from pathlib import Path
 
-from data_acquisition.storage.base import StorageBackend
-
 logger = logging.getLogger(__name__)
 
 
-class BinaryStorage(StorageBackend):
+class BinaryStorage:
     """
     Binary file storage backend.
 

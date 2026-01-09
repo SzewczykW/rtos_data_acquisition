@@ -1,25 +1,24 @@
-/**************************************************************************/ /**
-                                                                              * @file
-                                                                              *  system_LPC17xx.c
-                                                                              * @brief
-                                                                              *  CMSIS
-                                                                              * Device
-                                                                              * System
-                                                                              * Source
-                                                                              * File for
-                                                                              *           NXP
-                                                                              * LPC17xx
-                                                                              * Device
-                                                                              * Series
-                                                                              * @version
-                                                                              *  V1.14
-                                                                              * @date
-                                                                              *  05.
-                                                                              * April
-                                                                              * 2016
-                                                                              ******************************************************************************/
-/* Copyright (c) 2012 - 2016 ARM LIMITED
-
+/**
+ * @file
+ *  system_LPC17xx.c
+ * @brief
+ *  CMSIS
+ * Device
+ * System
+ * Source
+ * File for
+ *           NXP
+ * LPC17xx
+ * Device
+ * Series
+ * @version
+ *  V1.14
+ * @date
+ *  05.
+ * April
+ * 2016
+ * / Copyright (c) 2012 - 2016 ARM LIMITED
+  ---------------------------------------------------------------------------
    All rights reserved.
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are met:
@@ -317,7 +316,7 @@ Timer
 #define USBCLKCFG_Val 0x00000000
 #define PCLKSEL0_Val  0x00000000
 #define PCLKSEL1_Val  0x00000000
-#define PCONP_Val     0x042887DE
+#define PCONP_Val     0xE42887DE
 #define CLKOUTCFG_Val 0x00000000
 
 /*--------------------- Flash Accelerator Configuration ----------------------
@@ -511,17 +510,17 @@ void SystemInit(void)
     LPC_SC->CLKSRCSEL = CLKSRCSEL_Val; /* Select Clock Source sysclk / PLL0  */
 
 #if (PLL0_SETUP)
-    LPC_SC->PLL0CFG = PLL0CFG_Val; /* configure PLL0                     */
+    LPC_SC->PLL0CFG  = PLL0CFG_Val; /* configure PLL0                     */
     LPC_SC->PLL0FEED = 0xAA;
     LPC_SC->PLL0FEED = 0x55;
 
-    LPC_SC->PLL0CON = 0x01; /* PLL0 Enable                        */
+    LPC_SC->PLL0CON  = 0x01; /* PLL0 Enable                        */
     LPC_SC->PLL0FEED = 0xAA;
     LPC_SC->PLL0FEED = 0x55;
     while (!(LPC_SC->PLL0STAT & (1 << 26)))
         ; /* Wait for PLOCK0                    */
 
-    LPC_SC->PLL0CON = 0x03; /* PLL0 Enable & Connect              */
+    LPC_SC->PLL0CON  = 0x03; /* PLL0 Enable & Connect              */
     LPC_SC->PLL0FEED = 0xAA;
     LPC_SC->PLL0FEED = 0x55;
     while ((LPC_SC->PLL0STAT & ((1 << 25) | (1 << 24))) != ((1 << 25) | (1 << 24)))
@@ -529,17 +528,17 @@ void SystemInit(void)
 #endif
 
 #if (PLL1_SETUP)
-    LPC_SC->PLL1CFG = PLL1CFG_Val;
+    LPC_SC->PLL1CFG  = PLL1CFG_Val;
     LPC_SC->PLL1FEED = 0xAA;
     LPC_SC->PLL1FEED = 0x55;
 
-    LPC_SC->PLL1CON = 0x01; /* PLL1 Enable                        */
+    LPC_SC->PLL1CON  = 0x01; /* PLL1 Enable                        */
     LPC_SC->PLL1FEED = 0xAA;
     LPC_SC->PLL1FEED = 0x55;
     while (!(LPC_SC->PLL1STAT & (1 << 10)))
         ; /* Wait for PLOCK1                    */
 
-    LPC_SC->PLL1CON = 0x03; /* PLL1 Enable & Connect              */
+    LPC_SC->PLL1CON  = 0x03; /* PLL1 Enable & Connect              */
     LPC_SC->PLL1FEED = 0xAA;
     LPC_SC->PLL1FEED = 0x55;
     while ((LPC_SC->PLL1STAT & ((1 << 9) | (1 << 8))) != ((1 << 9) | (1 << 8)))

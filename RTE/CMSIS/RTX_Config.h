@@ -44,7 +44,7 @@
 //   <i> Defines the combined global dynamic memory size.
 //   <i> Default: 32768
 #ifndef OS_DYNAMIC_MEM_SIZE
-#define OS_DYNAMIC_MEM_SIZE 32768
+#define OS_DYNAMIC_MEM_SIZE 16384
 #endif
 
 //   <o>Kernel Tick Frequency [Hz] <1-1000000>
@@ -224,7 +224,7 @@
 //   <i> Enabling this option increases significantly the execution time of thread
 //   creation.
 #ifndef OS_STACK_WATERMARK
-#define OS_STACK_WATERMARK 0
+#define OS_STACK_WATERMARK 1
 #endif
 
 //   <o>Default Processor mode for Thread execution
@@ -263,7 +263,7 @@
 //   <i> Defines priority for timer thread
 //   <i> Default: High
 #ifndef OS_TIMER_THREAD_PRIO
-#define OS_TIMER_THREAD_PRIO 40
+#define OS_TIMER_THREAD_PRIO 48
 #endif
 
 //   <o>Timer Thread Stack size [bytes] <0-1073741824:8>

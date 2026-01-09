@@ -10,15 +10,15 @@ AlignAfterOpenBracket: BlockIndent
 
 # Braces
 BreakBeforeBraces: Allman
-AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
-AllowShortBlocksOnASingleLine: Never
+AllowShortBlocksOnASingleLine: false
 
 # Alignment
 AlignConsecutiveMacros: true
-AlignConsecutiveDeclarations: false
-AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: true
 AlignTrailingComments: true
 AlignOperands: true
 

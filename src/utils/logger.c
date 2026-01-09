@@ -8,83 +8,30 @@
 #include "logger.h"
 
 #include "Driver_USART.h"
-#include "FreeRTOSConfig.h"
 #include "LPC17xx.h"
 #include "RTE_Components.h"
 #include "RTE_Device.h"
 #include "cmsis_os2.h"
-#include "config.h"
 #include "panic.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
-/* DMA interrupt priority for FreeRTOS compatibility.
- * UART1 uses DMA (RTE_UART1_DMA_TX_EN=1), so TX complete callback
- * comes from DMA_IRQHandler, not UART1_IRQHandler.
- * Priority must be >= 16 to safely call osSemaphoreRelease from ISR.
- */
-
-/* Auto-select USART driver + determine which IRQ delivers TX-complete callback
- * (DMA_IRQn when RTE_UARTx_DMA_TX_EN==1, otherwise UARTx_IRQn).
- */
 #if defined(RTE_UART0) && (RTE_UART0 == 1)
-
 extern ARM_DRIVER_USART Driver_USART0;
-#define USART_DRIVER     (&Driver_USART0)
-#define LOGGER_UART_IRQn UART0_IRQn
-#if defined(RTE_UART0_DMA_TX_EN) && (RTE_UART0_DMA_TX_EN == 1)
-#define LOGGER_TX_USES_DMA 1
-#else
-#define LOGGER_TX_USES_DMA 0
-#endif
-
+#define USART_DRIVER (&Driver_USART0)
 #elif defined(RTE_UART1) && (RTE_UART1 == 1)
-
 extern ARM_DRIVER_USART Driver_USART1;
-#define USART_DRIVER     (&Driver_USART1)
-#define LOGGER_UART_IRQn UART1_IRQn
-#if defined(RTE_UART1_DMA_TX_EN) && (RTE_UART1_DMA_TX_EN == 1)
-#define LOGGER_TX_USES_DMA 1
-#else
-#define LOGGER_TX_USES_DMA 0
-#endif
-
+#define USART_DRIVER (&Driver_USART1)
 #elif defined(RTE_UART2) && (RTE_UART2 == 1)
-
 extern ARM_DRIVER_USART Driver_USART2;
-#define USART_DRIVER     (&Driver_USART2)
-#define LOGGER_UART_IRQn UART2_IRQn
-#if defined(RTE_UART2_DMA_TX_EN) && (RTE_UART2_DMA_TX_EN == 1)
-#define LOGGER_TX_USES_DMA 1
-#else
-#define LOGGER_TX_USES_DMA 0
-#endif
-
+#define USART_DRIVER (&Driver_USART2)
 #elif defined(RTE_UART3) && (RTE_UART3 == 1)
-
 extern ARM_DRIVER_USART Driver_USART3;
-#define USART_DRIVER     (&Driver_USART3)
-#define LOGGER_UART_IRQn UART3_IRQn
-#if defined(RTE_UART3_DMA_TX_EN) && (RTE_UART3_DMA_TX_EN == 1)
-#define LOGGER_TX_USES_DMA 1
+#define USART_DRIVER (&Driver_USART3)
 #else
-#define LOGGER_TX_USES_DMA 0
-#endif
-
-#else
-#error "No USART enabled in RTE_Device.h. Enable RTE_UART0/1/2/3."
-#endif
-
-#if (LOGGER_TX_USES_DMA == 1)
-#define LOGGER_TX_IRQn DMA_IRQn
-#else
-#define LOGGER_TX_IRQn LOGGER_UART_IRQn
-#endif
-
-#ifndef LOGGER_IRQ_PRIO
-#define LOGGER_IRQ_PRIO                                                                \
-    (configMAX_SYSCALL_INTERRUPT_PRIORITY >> (8U - __NVIC_PRIO_BITS))
+#error "No UART selected for Logger module in RTE_Device.h"
 #endif
 
 #define LOGGER_BUFFER_SIZE      256  /**< Internal buffer size */
@@ -92,14 +39,11 @@ extern ARM_DRIVER_USART Driver_USART3;
 #define LOGGER_MUTEX_TIMEOUT_MS 5000 /**< Mutex acquire timeout */
 
 static log_level_t current_log_level = LOG_LEVEL_DEBUG;
-static volatile uint8_t logger_initialized = 0;
-static char log_buffer[LOGGER_BUFFER_SIZE];
+static bool        initialized       = false;
+static char        log_buffer[LOGGER_BUFFER_SIZE];
 
-static osMutexId_t logger_mutex = NULL;
+static osMutexId_t     logger_mutex = NULL;
 static osSemaphoreId_t tx_semaphore = NULL;
-
-static void usart_callback(uint32_t event);
-static logger_status_t wait_for_tx_complete(uint32_t timeout_ms);
 
 /**
  * @brief USART event callback
@@ -111,23 +55,17 @@ static void usart_callback(uint32_t event)
                     ARM_USART_EVENT_TRANSFER_COMPLETE | ARM_USART_EVENT_SEND_COMPLETE |
                     ARM_USART_EVENT_TX_COMPLETE;
 
+    if (!initialized || osKernelGetState() != osKernelRunning)
+    {
+        return;
+    }
+
     if (event & mask)
     {
-        if (tx_semaphore != NULL)
-        {
-            osSemaphoreRelease(tx_semaphore);
-        }
+        osSemaphoreRelease(tx_semaphore);
     }
 
-    if (event & ARM_USART_EVENT_RX_TIMEOUT)
-    {
-        panic("USART RX timeout", NULL);
-    }
-
-    if (event & ARM_USART_EVENT_TX_UNDERFLOW)
-    {
-        panic("USART TX underflow", NULL);
-    }
+    return;
 }
 
 /**
@@ -139,7 +77,7 @@ static logger_status_t wait_for_tx_complete(uint32_t timeout_ms)
 {
     osStatus_t status;
 
-    if (tx_semaphore == NULL)
+    if (!initialized)
     {
         return LOGGER_ERROR_INIT;
     }
@@ -166,9 +104,10 @@ static logger_status_t wait_for_tx_complete(uint32_t timeout_ms)
  */
 logger_status_t logger_init(void)
 {
-    int32_t status;
+    logger_status_t ret_status = LOGGER_ERROR_INIT;
+    int32_t         status;
 
-    if (logger_initialized)
+    if (initialized)
     {
         return LOGGER_OK;
     }
@@ -176,7 +115,7 @@ logger_status_t logger_init(void)
     logger_mutex = osMutexNew(NULL);
     if (logger_mutex == NULL)
     {
-        return LOGGER_ERROR_INIT;
+        return ret_status;
     }
 
     tx_semaphore = osSemaphoreNew(1, 0, NULL);
@@ -184,10 +123,8 @@ logger_status_t logger_init(void)
     {
         osMutexDelete(logger_mutex);
         logger_mutex = NULL;
-        return LOGGER_ERROR_INIT;
+        return ret_status;
     }
-
-    logger_status_t ret_status = LOGGER_ERROR_INIT;
 
     status = USART_DRIVER->Initialize(usart_callback);
     if (status != ARM_DRIVER_OK)
@@ -222,10 +159,7 @@ logger_status_t logger_init(void)
         goto cleanup_power;
     }
 
-    NVIC_SetPriority(LOGGER_TX_IRQn, LOGGER_IRQ_PRIO);
-    NVIC_SetPriority(LOGGER_UART_IRQn, LOGGER_IRQ_PRIO);
-
-    logger_initialized = 1;
+    initialized = true;
     return LOGGER_OK;
 
 cleanup_power:
@@ -246,7 +180,7 @@ cleanup_rtos:
  */
 logger_status_t logger_deinit(void)
 {
-    if (!logger_initialized)
+    if (!initialized)
     {
         return LOGGER_OK;
     }
@@ -268,7 +202,7 @@ logger_status_t logger_deinit(void)
         logger_mutex = NULL;
     }
 
-    logger_initialized = 0;
+    initialized = false;
 
     return LOGGER_OK;
 }
@@ -303,12 +237,12 @@ log_level_t logger_get_level(void)
  */
 int logger_log(log_level_t level, const char *format, ...)
 {
-    va_list args;
-    int length;
+    va_list         args;
+    int             length;
     logger_status_t status;
-    osStatus_t mutex_status;
+    osStatus_t      mutex_status;
 
-    if (!logger_initialized)
+    if (!initialized)
     {
         return LOGGER_ERROR_INIT;
     }
@@ -351,7 +285,7 @@ int logger_log(log_level_t level, const char *format, ...)
     if (length >= LOGGER_BUFFER_SIZE)
     {
         const char *continuation = "...[TRUNCATED]...\r\n";
-        status = logger_write_raw(continuation, strlen(continuation));
+        status                   = logger_write_raw(continuation, strlen(continuation));
         if (status != LOGGER_OK)
         {
             osMutexRelease(logger_mutex);
@@ -372,10 +306,10 @@ int logger_log(log_level_t level, const char *format, ...)
  */
 logger_status_t logger_write_raw(const void *data, uint32_t size)
 {
-    int32_t status;
+    int32_t         status;
     logger_status_t wait_status;
 
-    if (!logger_initialized)
+    if (!initialized)
     {
         return LOGGER_ERROR_INIT;
     }
@@ -385,14 +319,12 @@ logger_status_t logger_write_raw(const void *data, uint32_t size)
         return LOGGER_ERROR_PARAM;
     }
 
-    /* Start transmission - DMA will send data */
     status = USART_DRIVER->Send(data, size);
     if (status != ARM_DRIVER_OK)
     {
         return LOGGER_ERROR_SEND;
     }
 
-    /* Wait for callback to signal TX complete - like reference osSignalWait pattern */
     wait_status = wait_for_tx_complete(LOGGER_TX_TIMEOUT_MS);
     if (wait_status != LOGGER_OK)
     {
@@ -409,7 +341,7 @@ logger_status_t logger_write_raw(const void *data, uint32_t size)
  */
 logger_status_t logger_flush(uint32_t timeout_ms)
 {
-    if (!logger_initialized)
+    if (!initialized)
     {
         return LOGGER_ERROR_INIT;
     }

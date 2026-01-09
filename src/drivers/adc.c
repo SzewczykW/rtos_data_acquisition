@@ -50,9 +50,9 @@ static const struct
 };
 
 static volatile uint16_t adc_last_value;
-static volatile uint8_t adc_done;
-static volatile uint8_t adc_initialized;
-static adc_channel_t adc_current_channel;
+static volatile uint8_t  adc_done;
+static volatile uint8_t  adc_initialized;
+static adc_channel_t     adc_current_channel;
 
 /**
  * @brief ADC Interrupt Handler
@@ -66,7 +66,7 @@ void ADC_IRQHandler(void)
     (void)adstat;
 
     adc_last_value = (LPC_ADC->ADGDR >> ADGDR_RESULT_SHIFT) & ADGDR_RESULT_MASK;
-    adc_done = 1U;
+    adc_done       = 1U;
 }
 
 adc_status_t adc_init(adc_channel_t channel)
@@ -104,7 +104,7 @@ adc_status_t adc_init(adc_channel_t channel)
     NVIC_EnableIRQ(ADC_IRQn);
 
     adc_current_channel = channel;
-    adc_initialized = 1;
+    adc_initialized     = 1;
 
     return ADC_OK;
 }

@@ -16,17 +16,20 @@ extern "C"
 {
 #endif
 
+/** USART baud rate for logger */
+#define USART_BAUDRATE 115200
+
     /**
      * @brief Log level enumeration
      */
     typedef enum
     {
-        LOG_LEVEL_DEBUG = 0,    /**< Debug level messages */
-        LOG_LEVEL_INFO = 1,     /**< Informational messages */
-        LOG_LEVEL_WARNING = 2,  /**< Warning messages */
-        LOG_LEVEL_ERROR = 3,    /**< Error messages */
+        LOG_LEVEL_DEBUG    = 0, /**< Debug level messages */
+        LOG_LEVEL_INFO     = 1, /**< Informational messages */
+        LOG_LEVEL_WARNING  = 2, /**< Warning messages */
+        LOG_LEVEL_ERROR    = 3, /**< Error messages */
         LOG_LEVEL_CRITICAL = 4, /**< Critical error messages */
-        LOG_LEVEL_NONE = 5      /**< Disable all logging */
+        LOG_LEVEL_NONE     = 5  /**< Disable all logging */
     } log_level_t;
 
     /**
@@ -34,14 +37,14 @@ extern "C"
      */
     typedef enum
     {
-        LOGGER_OK = 0,            /**< Operation successful */
-        LOGGER_ERROR_INIT = -1,   /**< Initialization error */
-        LOGGER_ERROR_POWER = -2,  /**< Power control error */
-        LOGGER_ERROR_CONFIG = -3, /**< Configuration error */
-        LOGGER_ERROR_SEND = -4,   /**< Send error */
-        LOGGER_ERROR_BUSY = -5,   /**< Logger is busy */
-        LOGGER_ERROR_PARAM = -6,  /**< Invalid parameter */
-        LOGGER_ERROR_UNKNOWN = -7 /**< Unknown error */
+        LOGGER_OK            = 0,  /**< Operation successful */
+        LOGGER_ERROR_INIT    = -1, /**< Initialization error */
+        LOGGER_ERROR_POWER   = -2, /**< Power control error */
+        LOGGER_ERROR_CONFIG  = -3, /**< Configuration error */
+        LOGGER_ERROR_SEND    = -4, /**< Send error */
+        LOGGER_ERROR_BUSY    = -5, /**< Logger is busy */
+        LOGGER_ERROR_PARAM   = -6, /**< Invalid parameter */
+        LOGGER_ERROR_UNKNOWN = -7  /**< Unknown error */
     } logger_status_t;
 
     /**

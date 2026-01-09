@@ -16,7 +16,7 @@
 //   <o>Number of UDP Sockets <1-20>
 //   <i>Number of available UDP sockets
 //   <i>Default: 5
-#define UDP_NUM_SOCKS 3
+#define UDP_NUM_SOCKS 1
 
 // </h>
 

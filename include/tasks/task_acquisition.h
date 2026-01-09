@@ -9,6 +9,7 @@
 #define TASK_ACQUISITION_H
 
 #include "adc.h"
+#include "cmsis_os2.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -18,13 +19,20 @@ extern "C"
 {
 #endif
 
-#define TASK_ACQUISITION_STACK_SIZE           256
-#define TASK_ACQUISITION_PRIORITY             osPriorityNormal
-#define TASK_ACQUISITION_DEFAULT_CHANNEL      ADC_CHANNEL_0
+/**< Stack size for the acquisition task */
+#define TASK_ACQUISITION_STACK_SIZE 1024
+/**< Priority for the acquisition task */
+#define TASK_ACQUISITION_PRIORITY osPriorityBelowNormal
+/**< Default ADC channel for acquisition */
+#define TASK_ACQUISITION_DEFAULT_CHANNEL ADC_CHANNEL_0
+/**< Default threshold in millivolts */
 #define TASK_ACQUISITION_DEFAULT_THRESHOLD_MV 1650
-#define ADC_VREF_MV                           3300
-#define ACQUISITION_DEFAULT_BATCH_SIZE        100
-#define ACQUISITION_MAX_BATCH_SIZE            500
+/**< ADC reference voltage in millivolts */
+#define ADC_VREF_MV 3300
+/**< Default batch size */
+#define ACQUISITION_DEFAULT_BATCH_SIZE 100
+/**< Maximum batch size (samples per packet) */
+#define ACQUISITION_MAX_BATCH_SIZE 500
 
     /**
      * @brief Acquisition task state

@@ -51,17 +51,17 @@
 //     <s.15>Default Gateway
 //     <i>IP Address of Default Gateway in text representation
 //     <i>Default: "192.168.0.254"
-#define ETH0_IP4_GATEWAY "10.10.10.254"
+#define ETH0_IP4_GATEWAY "10.10.10.26"
 
 //     <s.15>Primary DNS Server
 //     <i>IP Address of Primary DNS Server in text representation
 //     <i>Default: "8.8.8.8"
-#define ETH0_IP4_PRIMARY_DNS ""
+#define ETH0_IP4_PRIMARY_DNS "0.0.0.0"
 
 //     <s.15>Secondary DNS Server
 //     <i>IP Address of Secondary DNS Server in text representation
 //     <i>Default: "8.8.4.4"
-#define ETH0_IP4_SECONDARY_DNS ""
+#define ETH0_IP4_SECONDARY_DNS "0.0.0.0"
 
 //     <e>IP Fragmentation
 //     <i>This option enables fragmentation of outgoing IP datagrams,
@@ -103,7 +103,7 @@
 //       <i>will send a Gratuitous ARP notification at startup,
 //       <i>or when the device IP address has changed.
 //       <i>Default: Disabled
-#define ETH0_ARP_NOTIFY 0
+#define ETH0_ARP_NOTIFY 1
 //     </h>
 
 //     <e>IGMP Group Management
@@ -265,7 +265,7 @@
 //   <i>These settings are used to optimize usage of OS resources.
 //     <o>Interface Thread Stack Size <512-65535:4>
 //     <i>Default: 512 bytes
-#define ETH0_THREAD_STACK_SIZE 512
+#define ETH0_THREAD_STACK_SIZE 1024
 
 //        Interface Thread Priority
 #define ETH0_THREAD_PRIORITY osPriorityAboveNormal

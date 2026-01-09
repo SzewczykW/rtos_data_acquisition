@@ -331,8 +331,8 @@
             <useXO>0</useXO>
             <v6Lang>5</v6Lang>
             <v6LangP>3</v6LangP>
-            <vShortEn>1</vShortEn>
-            <vShortWch>1</vShortWch>
+            <vShortEn>0</vShortEn>
+            <vShortWch>0</vShortWch>
             <v6Lto>0</v6Lto>
             <v6WtE>0</v6WtE>
             <v6Rtti>0</v6Rtti>
@@ -371,7 +371,7 @@
             <TextAddressRange>0x00000000</TextAddressRange>
             <DataAddressRange>0x10000000</DataAddressRange>
             <pXoBase></pXoBase>
-            <ScatterFile>.\lpc1768_iram2.sct</ScatterFile>
+            <ScatterFile>.\lpc1768.sct</ScatterFile>
             <IncludeLibs></IncludeLibs>
             <IncludeLibsPath></IncludeLibsPath>
             <Misc></Misc>
@@ -398,11 +398,6 @@
               <FileName>system.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\app\system.c</FilePath>
-            </File>
-            <File>
-              <FileName>config.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\include\app\config.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -468,6 +463,16 @@
               <FileName>task_acquisition.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\include\tasks\task_acquisition.h</FilePath>
+            </File>
+            <File>
+              <FileName>task_init.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\include\tasks\task_init.h</FilePath>
+            </File>
+            <File>
+              <FileName>task_init.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\tasks\task_init.c</FilePath>
             </File>
           </Files>
         </Group>

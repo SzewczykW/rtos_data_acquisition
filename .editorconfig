@@ -14,5 +14,5 @@ indent_size = 2
 [.clang-format]
 indent_size = 2
 
-[*.uvprojx]
+[*.{uvprojx,uvoptx,sct}]
 indent_size = 2

@@ -18,24 +18,25 @@ extern "C"
 #endif
 
 /** Maximum UDP payload size in bytes */
-#define UDP_MAX_PAYLOAD_SIZE 1472
+#define UDP_MAX_PAYLOAD_SIZE 1452u
 /** Default receive timeout in milliseconds. Zero means no timeout */
 #define UDP_DEFAULT_RECV_TIMEOUT 1000
-
+/** Number of UDP receive queue length */
+#define UDP_RX_QUEUE_LEN 5u
     /**
      * @brief UDP socket status codes
      */
     typedef enum
     {
-        UDP_STATUS_OK = 0,            /**< Operation successful */
-        UDP_STATUS_ERROR = 1,         /**< General error */
-        UDP_STATUS_TIMEOUT = 2,       /**< Operation timed out */
-        UDP_STATUS_NO_MEMORY = 3,     /**< Memory allocation failed */
+        UDP_STATUS_OK            = 0, /**< Operation successful */
+        UDP_STATUS_ERROR         = 1, /**< General error */
+        UDP_STATUS_TIMEOUT       = 2, /**< Operation timed out */
+        UDP_STATUS_NO_MEMORY     = 3, /**< Memory allocation failed */
         UDP_STATUS_INVALID_PARAM = 4, /**< Invalid parameter */
-        UDP_STATUS_NOT_INIT = 5,      /**< Socket not initialized */
-        UDP_STATUS_ALREADY_INIT = 6,  /**< Socket already initialized */
-        UDP_STATUS_NET_ERROR = 7,     /**< Network stack error */
-        UDP_STATUS_LINK_DOWN = 8      /**< Ethernet link is down */
+        UDP_STATUS_NOT_INIT      = 5, /**< Socket not initialized */
+        UDP_STATUS_ALREADY_INIT  = 6, /**< Socket already initialized */
+        UDP_STATUS_NET_ERROR     = 7, /**< Network stack error */
+        UDP_STATUS_LINK_DOWN     = 8  /**< Ethernet link is down */
     } udp_status_t;
 
     /**
@@ -51,8 +52,8 @@ extern "C"
      */
     typedef struct
     {
-        udp_ipv4_addr_t ip; /**< IPv4 address */
-        uint16_t port;      /**< Port number in host order */
+        udp_ipv4_addr_t ip;   /**< IPv4 address */
+        uint16_t        port; /**< Port number in host order */
     } udp_endpoint_t;
 
     /**

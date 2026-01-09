@@ -1,0 +1,40 @@
+LR_IROM1 0x00000000 0x00080000  {
+
+  ER_IROM1 0x00000000 0x00080000  {
+    *.o (RESET, +First)
+    *(InRoot$$Sections)
+    .ANY (+RO)
+    .ANY (+XO)
+  }
+
+  ; =========================
+  ; AHB SRAM 32k: 0x2007C000..0x20083FFF
+  ;  - 16k spill
+  ;  - 16k EMAC
+  ; =========================
+
+  ; 1) Spill
+  RW_AHB_SPILL 0x2007C000 0x00004000  {
+    .ANY (+RW +ZI)
+  }
+
+  ; 2) EMAC DMA
+  RW_EMAC_DMA 0x20080000 0x00004000  {
+    *EMAC_LPC17xx.o (+RW +ZI)
+  }
+
+  ; =========================
+  ; Local SRAM 32k: 0x10000000..0x10007FFF
+  ; =========================
+
+  RW_IRAM1 0x10000000 0x00007C00  {
+    rtx_kernel.o (+RW +ZI)
+    rtx_lib.o    (+RW +ZI)
+    .ANY (+RW +ZI)
+  }
+
+  ; STACK
+  ARM_STACK 0x10007C00 0x00000400  {
+    startup_lpc17xx.o(STACK)
+  }
+}

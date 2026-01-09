@@ -81,11 +81,11 @@ extern "C"
      */
     typedef enum
     {
-        MSG_TYPE_PING = 0x01,  /**< Ping request */
-        MSG_TYPE_PONG = 0x02,  /**< Pong response */
-        MSG_TYPE_DATA = 0x10,  /**< ADC data packet */
-        MSG_TYPE_CMD = 0x20,   /**< Command from host */
-        MSG_TYPE_STATUS = 0x30 /**< Status report */
+        MSG_TYPE_PING   = 0x01, /**< Ping request */
+        MSG_TYPE_PONG   = 0x02, /**< Pong response */
+        MSG_TYPE_DATA   = 0x10, /**< ADC data packet */
+        MSG_TYPE_CMD    = 0x20, /**< Command from host */
+        MSG_TYPE_STATUS = 0x30  /**< Status report */
     } protocol_msg_type_t;
 
     /**
@@ -93,10 +93,10 @@ extern "C"
      */
     typedef enum
     {
-        CMD_START_ACQ = 0x01,  /**< Start data acquisition */
-        CMD_STOP_ACQ = 0x02,   /**< Stop data acquisition */
+        CMD_START_ACQ  = 0x01, /**< Start data acquisition */
+        CMD_STOP_ACQ   = 0x02, /**< Stop data acquisition */
         CMD_GET_STATUS = 0x03, /**< Request status */
-        CMD_CONFIGURE = 0x04   /**< Configure measurement parameters */
+        CMD_CONFIGURE  = 0x04  /**< Configure measurement parameters */
     } protocol_cmd_t;
 
     /**
@@ -116,7 +116,7 @@ extern "C"
     typedef struct __attribute__((packed))
     {
         uint16_t magic;       /**< Magic number (PROTOCOL_MAGIC) */
-        uint8_t msg_type;     /**< Message type */
+        uint8_t  msg_type;    /**< Message type */
         uint16_t sequence;    /**< Sequence number */
         uint16_t payload_len; /**< Payload length */
     } protocol_header_t;
@@ -126,8 +126,8 @@ extern "C"
      */
     typedef struct __attribute__((packed))
     {
-        uint8_t channel;       /**< ADC channel */
-        uint8_t reserved;      /**< Reserved for alignment */
+        uint8_t  channel;      /**< ADC channel */
+        uint8_t  reserved;     /**< Reserved for alignment */
         uint16_t sample_count; /**< Number of samples */
         uint16_t samples[];    /**< ADC samples (flexible array) */
     } protocol_data_payload_t;
@@ -138,11 +138,11 @@ extern "C"
     typedef enum
     {
         CONFIG_THRESHOLD_PERCENT = 0, /**< Threshold as percentage (0-100) */
-        CONFIG_THRESHOLD_MV = 1,      /**< Threshold in millivolts (0-3300) */
-        CONFIG_BATCH_SIZE = 2,        /**< Batch size, samples per packet (1-500) */
-        CONFIG_CHANNEL = 3,           /**< ADC channel (0-7) */
-        CONFIG_RESET_SEQUENCE = 4,    /**< Reset sequence counter (param ignored) */
-        CONFIG_LOG_LEVEL = 5          /**< Set log level (0=DEBUG..5=NONE) */
+        CONFIG_THRESHOLD_MV      = 1, /**< Threshold in millivolts (0-3300) */
+        CONFIG_BATCH_SIZE        = 2, /**< Batch size, samples per packet (1-500) */
+        CONFIG_CHANNEL           = 3, /**< ADC channel (0-7) */
+        CONFIG_RESET_SEQUENCE    = 4, /**< Reset sequence counter (param ignored) */
+        CONFIG_LOG_LEVEL         = 5  /**< Set log level (0=DEBUG..5=NONE) */
     } protocol_config_param_t;
 
     /**
@@ -150,9 +150,9 @@ extern "C"
      */
     typedef struct __attribute__((packed))
     {
-        uint8_t cmd;        /**< Command code */
-        uint8_t param_type; /**< Parameter type (protocol_config_param_t) */
-        uint16_t param;     /**< Command parameter value */
+        uint8_t  cmd;        /**< Command code */
+        uint8_t  param_type; /**< Parameter type (protocol_config_param_t) */
+        uint16_t param;      /**< Command parameter value */
     } protocol_cmd_payload_t;
 
     /**
@@ -160,8 +160,8 @@ extern "C"
      */
     typedef struct __attribute__((packed))
     {
-        uint8_t acquiring;     /**< Acquisition active flag */
-        uint8_t channel;       /**< Current ADC channel */
+        uint8_t  acquiring;    /**< Acquisition active flag */
+        uint8_t  channel;      /**< Current ADC channel */
         uint16_t threshold_mv; /**< Current threshold in millivolts */
         uint32_t uptime;       /**< System uptime in seconds */
         uint32_t samples_sent; /**< Total samples sent */
@@ -173,7 +173,7 @@ extern "C"
     typedef struct __attribute__((packed))
     {
         protocol_header_t header;
-        uint8_t payload[PROTOCOL_MAX_DATA_SIZE];
+        uint8_t           payload[PROTOCOL_MAX_DATA_SIZE];
     } protocol_packet_t;
 
     /**
