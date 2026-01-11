@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 
 PROTOCOL_MAGIC = 0xDA7A
-HEADER_SIZE = 7  # magic(2) + msg_type(1) + sequence(2) + payload_len(2)
+HEADER_SIZE = 7
 
 
 class MsgType(IntEnum):
@@ -35,26 +35,18 @@ class Command(IntEnum):
 
 
 class ConfigParam(IntEnum):
-    """
-    Configuration parameter types for CMD_CONFIGURE.
+    """Configuration parameter types for CMD_CONFIGURE."""
 
-    These values must match protocol_config_param_t in protocol.h.
-    """
-
-    THRESHOLD_PERCENT = 0  # Threshold as percentage (0-100)
-    THRESHOLD_MV = 1  # Threshold in millivolts (0-3300)
-    BATCH_SIZE = 2  # Samples per packet (1-500)
-    CHANNEL = 3  # ADC channel (0-7)
-    RESET_SEQUENCE = 4  # Reset sequence counter (param ignored)
-    LOG_LEVEL = 5  # Set log level (0=DEBUG..5=NONE)
+    THRESHOLD_PERCENT = 0
+    THRESHOLD_MV = 1
+    BATCH_SIZE = 2
+    CHANNEL = 3
+    RESET_SEQUENCE = 4
+    LOG_LEVEL = 5
 
 
 class LogLevel(IntEnum):
-    """
-    Device log levels.
-
-    These values must match log_level_t in logger.h.
-    """
+    """Device log levels."""
 
     DEBUG = 0
     INFO = 1
@@ -69,10 +61,16 @@ class Header:
     """
     Protocol header (7 bytes).
 
-    Wire format (little-endian):
-        +--------+--------+--------+--------+--------+--------+--------+
-        |    MAGIC (2B)   |MSG_TYPE| SEQUENCE (2B)   |PAYLOAD_LEN (2B) |
-        +--------+--------+--------+--------+--------+--------+--------+
+    Format (little-endian):
+        +-----------------+---------------+-----------------+------------------+
+        |      0xDA7A     | MSG_TYPE (1B) | SEQUENCE (2B)   | PAYLOAD_LEN (2B) |
+        +-----------------+---------------+-----------------+------------------+
+
+    Attributes:
+        magic: Magic number (0xDA7A)
+        msg_type: Message type
+        sequence: Packet sequence number
+        payload_len: Length of payload in bytes
     """
 
     magic: int
@@ -84,32 +82,50 @@ class Header:
 
     @classmethod
     def unpack(cls, data: bytes) -> Header:
-        """Unpack header from bytes."""
+        """Unpack header from bytes.
+
+        Args:
+            data (bytes): Raw bytes containing the header
+        Returns:
+            Header: Unpacked header object
+        """
         magic, msg_type, seq, payload_len = struct.unpack(
             cls.FORMAT, data[:HEADER_SIZE]
         )
         return cls(magic, msg_type, seq, payload_len)
 
     def pack(self) -> bytes:
-        """Pack header to bytes."""
+        """Pack header to bytes.
+
+        Returns:
+            bytes: Packed header bytes
+        """
         return struct.pack(
             self.FORMAT, self.magic, self.msg_type, self.sequence, self.payload_len
         )
 
     def is_valid(self) -> bool:
-        """Check if header has valid magic number."""
+        """Check if header has valid magic number.
+
+        Returns:
+            bool: True if magic number is valid, False otherwise
+        """
         return self.magic == PROTOCOL_MAGIC
 
 
 @dataclass
 class DataPayload:
     """
-    ADC data payload.
+    ADC data payload (UNDEFINED size - depends on sample count).
 
-    Wire format (little-endian):
-        +--------+--------+--------+--------+--------+--------+
-        |CHANNEL |RESERVED|SAMPLE_CNT (2B)  | samples[]...    |
-        +--------+--------+--------+--------+--------+--------+
+    Format (little-endian):
+        +-------------+-------------+-----------------+-----------------+
+        |CHANNEL (1B) |RESERVED (1B)|SAMPLE_CNT (2B)  | samples[]...    |
+        +-------------+-------------+-----------------+-----------------+
+
+    Attributes:
+        channel: ADC channel number (0-7)
+        samples: List of acquired samples (16-bit unsigned integers)
     """
 
     channel: int
@@ -117,7 +133,14 @@ class DataPayload:
 
     @classmethod
     def unpack(cls, data: bytes) -> DataPayload:
-        """Unpack data payload from bytes."""
+        """Unpack data payload from bytes.
+
+        Args:
+            data (bytes): Raw bytes containing the data payload
+
+        Returns:
+            DataPayload: Unpacked data payload object
+        """
         channel, _, sample_count = struct.unpack("<BBH", data[:4])
         samples = list(
             struct.unpack(f"<{sample_count}H", data[4 : 4 + sample_count * 2])
@@ -130,12 +153,19 @@ class StatusPayload:
     """
     Status response payload (12 bytes).
 
-    Wire format (little-endian):
-        +--------+--------+--------+--------+--------+--------+
-        |  ACQ   |   CH   | THRESH_MV (2B)  |   UPTIME (4B)   |
-        +--------+--------+--------+--------+--------+--------+
+    Format (little-endian):
+        +------------+------------+-----------------+-----------------+
+        |  ACQ (1B)  |   CH (1B)  | THRESH_MV (2B)  |   UPTIME (4B)   |
+        +------------+------------+-----------------+-----------------+
         |      SAMPLES_SENT (4B)            |
         +--------+--------+--------+--------+
+
+    Attributes:
+        acquiring: Whether acquisition is currently active
+        channel: Configured ADC channel
+        threshold_mv: Configured threshold in millivolts
+        uptime: Device uptime in seconds
+        samples_sent: Total number of samples sent to host
     """
 
     acquiring: bool
@@ -148,7 +178,14 @@ class StatusPayload:
 
     @classmethod
     def unpack(cls, data: bytes) -> StatusPayload:
-        """Unpack status payload from bytes."""
+        """Unpack status payload from bytes.
+
+        Args:
+            data (bytes): Raw bytes containing the status payload
+
+        Returns:
+            StatusPayload: Unpacked status payload object
+        """
         acq, ch, thresh, uptime, samples = struct.unpack(cls.FORMAT, data[:12])
         return cls(bool(acq), ch, thresh, uptime, samples)
 
@@ -160,7 +197,11 @@ class ProtocolBuilder:
         self._sequence = 0
 
     def _next_seq(self) -> int:
-        """Get next sequence number (wraps at 16 bits)."""
+        """Get next sequence number
+
+        Returns:
+            int: Next sequence number
+        """
         seq = self._sequence
         self._sequence = (self._sequence + 1) & 0xFFFF
         return seq
@@ -170,12 +211,12 @@ class ProtocolBuilder:
         Build a command packet.
 
         Args:
-            cmd: Command code
-            param_type: Parameter type (for CMD_CONFIGURE)
-            param: Parameter value
+            cmd (Command): Command code
+            param_type (int): Parameter type (for CMD_CONFIGURE)
+            param (int): Parameter value
 
         Returns:
-            Complete packet bytes
+            bytes: Complete packet bytes
         """
         payload = struct.pack("<BBH", cmd, param_type, param)
         header = Header(
@@ -187,7 +228,11 @@ class ProtocolBuilder:
         return header.pack() + payload
 
     def build_ping(self) -> bytes:
-        """Build a ping packet."""
+        """Build a ping packet.
+
+        Returns:
+            bytes: Complete ping packet bytes
+        """
         header = Header(
             magic=PROTOCOL_MAGIC,
             msg_type=MsgType.PING,

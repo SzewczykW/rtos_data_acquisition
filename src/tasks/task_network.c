@@ -283,10 +283,12 @@ process_received_packet(const uint8_t *data, size_t len, const udp_endpoint_t *r
 static void network_task(void *argument)
 {
     (void)argument;
+    ARM_ETH_LINK_INFO info;
+
+    LOG_INFO("Network task started");
 
     current_state = NET_STATE_WAIT_LINK;
     LOG_INFO("Network task: waiting for Ethernet link...");
-
     if (!wait_for_link(30000))
     {
         LOG_ERROR("Ethernet link timeout");
@@ -294,9 +296,8 @@ static void network_task(void *argument)
         return;
     }
 
-    LOG_INFO("Ethernet link up, waiting for IP address...");
     current_state = NET_STATE_WAIT_IP;
-
+    LOG_INFO("Ethernet link up, waiting for IP address...");
     if (!wait_for_ip(IP_WAIT_TIMEOUT))
     {
         LOG_ERROR("IP address timeout");
@@ -318,12 +319,12 @@ static void network_task(void *argument)
         return;
     }
 
-    LOG_INFO("UDP socket created on port %u", TASK_NETWORK_LOCAL_PORT);
     current_state = NET_STATE_READY;
+    LOG_INFO("UDP socket created on port %u", TASK_NETWORK_LOCAL_PORT);
 
-    ARM_ETH_LINK_INFO info;
     info = Driver_ETH_PHY0.GetLinkInfo();
     LOG_DEBUG("PHY speed=%u duplex=%u\n", (unsigned)info.speed, (unsigned)info.duplex);
+
     while (1)
     {
         if (!udp_socket_is_link_up())
@@ -333,7 +334,7 @@ static void network_task(void *argument)
 
             if (udp_socket != NULL)
             {
-                LOG_DEBUG("Closing UDP socket due to link loss");
+                LOG_WARNING("Closing UDP socket due to link loss");
                 udp_socket_close(udp_socket);
                 udp_socket = NULL;
             }
@@ -393,12 +394,13 @@ static void network_task(void *argument)
             "RxPI=%lu RxCI=%lu TxPI=%lu TxCI=%lu", LPC_EMAC->RxProduceIndex,
             LPC_EMAC->RxConsumeIndex, LPC_EMAC->TxProduceIndex, LPC_EMAC->TxConsumeIndex
         );
-        volatile uint32_t *tx_stat = (volatile uint32_t *)LPC_EMAC->TxStatus;
-        uint32_t tci = LPC_EMAC->TxConsumeIndex % LPC_EMAC->TxDescriptorNumber;
         LOG_DEBUG(
-            "TX: CI=%lu Stat[%lu]=%08lX", LPC_EMAC->TxConsumeIndex, tci, tx_stat[tci]
+            "TX: CI=%lu Stat[%lu]=%08lX", LPC_EMAC->TxConsumeIndex,
+            LPC_EMAC->TxConsumeIndex % LPC_EMAC->TxDescriptorNumber,
+            (
+                (volatile uint32_t *)LPC_EMAC->TxStatus
+            )[LPC_EMAC->TxConsumeIndex % LPC_EMAC->TxDescriptorNumber]
         );
-
         osDelay(1);
     }
 }
@@ -430,24 +432,23 @@ int network_task_start(void)
 {
     if (!initialized)
     {
-        LOG_ERROR("Network not initialized");
+        panic("Network not initialized", NULL);
         return -1;
     }
 
     if (network_thread != NULL)
     {
-        LOG_WARNING("Network task already running");
+        panic("Network task already running", NULL);
         return 0;
     }
 
     network_thread = osThreadNew(network_task, NULL, &network_thread_attr);
     if (network_thread == NULL)
     {
-        LOG_ERROR("Failed to create network task");
+        panic("Failed to create network task", NULL);
         return -1;
     }
 
-    LOG_INFO("Network task started");
     return 0;
 }
 
@@ -465,6 +466,7 @@ int network_set_target(const char *ip_addr, uint16_t port)
 {
     if (ip_addr == NULL)
     {
+        LOG_CRITICAL("IP address cannot be NULL");
         return -1;
     }
 
@@ -483,11 +485,13 @@ int network_send_data(uint8_t channel, const uint16_t *samples, uint16_t sample_
 {
     if (!network_is_ready())
     {
+        LOG_CRITICAL("Network not ready. Cannot send data.");
         return -1;
     }
 
     if (samples == NULL || sample_count == 0)
     {
+        LOG_CRITICAL("Invalid samples or sample count");
         return -1;
     }
 
@@ -523,11 +527,13 @@ int network_send_raw(const uint8_t *data, size_t len)
 {
     if (!network_is_ready())
     {
+        LOG_CRITICAL("Network not ready. Cannot send data.");
         return -1;
     }
 
     if (data == NULL || len == 0)
     {
+        LOG_CRITICAL("Cannot send NULL or empty data");
         return -1;
     }
 
@@ -535,6 +541,7 @@ int network_send_raw(const uint8_t *data, size_t len)
 
     if (status != UDP_STATUS_OK)
     {
+        LOG_ERROR("Failed to send raw data: %d", status);
         stats.errors++;
         return -1;
     }

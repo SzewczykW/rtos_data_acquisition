@@ -38,7 +38,6 @@ static uint8_t  tx_buffer[512];
  */
 static uint16_t mv_to_adc(uint16_t mv)
 {
-    /* ADC is 12-bit (0-4095), VREF is 3.3V */
     return (uint16_t)((uint32_t)mv * 4095 / ADC_VREF_MV);
 }
 
@@ -52,7 +51,7 @@ static void acquisition_task(void *argument)
     uint16_t adc_value;
     uint16_t threshold_adc;
 
-    LOG_INFO("Acquisition task running");
+    LOG_INFO("Acquisition task started");
 
     while (1)
     {
@@ -119,6 +118,7 @@ int acquisition_init(void)
 {
     if (initialized)
     {
+        panic("Acquisition already initialized", NULL);
         return 0;
     }
 
@@ -140,24 +140,23 @@ int acquisition_task_start(void)
 {
     if (!initialized)
     {
-        LOG_ERROR("Acquisition not initialized");
+        panic("Acquisition not initialized", NULL);
         return -1;
     }
 
     if (acquisition_thread != NULL)
     {
-        LOG_WARNING("Acquisition task already running");
+        panic("Acquisition task already running", NULL);
         return 0;
     }
 
     acquisition_thread = osThreadNew(acquisition_task, NULL, &acquisition_thread_attr);
     if (acquisition_thread == NULL)
     {
-        LOG_ERROR("Failed to create acquisition task");
+        panic("Failed to create acquisition task", NULL);
         return -1;
     }
 
-    LOG_INFO("Acquisition task started");
     return 0;
 }
 
@@ -165,11 +164,13 @@ int acquisition_start(void)
 {
     if (!initialized)
     {
+        panic("Acquisition not initialized", NULL);
         return -1;
     }
 
     if (current_state == ACQ_STATE_RUNNING)
     {
+        panic("Acquisition already running", NULL);
         return 0;
     }
 
@@ -187,6 +188,7 @@ int acquisition_stop(void)
 {
     if (!initialized)
     {
+        panic("Acquisition not initialized", NULL);
         return -1;
     }
 
@@ -210,6 +212,10 @@ int acquisition_set_threshold_mv(uint16_t mv)
 {
     if (mv > ADC_VREF_MV)
     {
+        LOG_ERROR(
+            "Invalid threshold value: %u mV. Keep threshold unchanged at %u mV", mv,
+            threshold_mv
+        );
         return -1;
     }
 
@@ -222,6 +228,10 @@ int acquisition_set_threshold_percent(uint8_t percent)
 {
     if (percent > 100)
     {
+        LOG_ERROR(
+            "Invalid threshold percentage: %u%%. Keep threshold unchanged at %u mV",
+            percent, threshold_mv
+        );
         return -1;
     }
 
@@ -239,6 +249,7 @@ int acquisition_set_channel(adc_channel_t channel)
 {
     if (channel >= ADC_CHANNEL_MAX)
     {
+        LOG_ERROR("Invalid ADC channel: %u", channel);
         return -1;
     }
 

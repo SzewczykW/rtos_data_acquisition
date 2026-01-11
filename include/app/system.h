@@ -8,10 +8,14 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
+#include "logger.h"
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define DEFAULT_LOG_LEVEL LOG_LEVEL_DEBUG
 
 #ifdef __cplusplus
 }

@@ -28,7 +28,8 @@ static void init_task(void *argument)
     LPC_GPIO1->FIODIR |= (1u << 14);
     LPC_GPIO1->FIOCLR = (1u << 14);
 
-    LPC_EMAC->RxFilterCtrl = 0x22; // Accept unicast and broadcast but not multicast
+    // Accept unicast and broadcast but not multicast
+    LPC_EMAC->RxFilterCtrl = 0x22;
 
     if (network_task_start() != 0)
     {

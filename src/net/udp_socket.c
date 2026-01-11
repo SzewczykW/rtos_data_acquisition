@@ -251,6 +251,7 @@ udp_status_t udp_socket_init(void)
 {
     if (module_initialized)
     {
+        panic("UDP socket module already initialized", NULL);
         return UDP_STATUS_ALREADY_INIT;
     }
 
@@ -264,6 +265,7 @@ udp_status_t udp_socket_init(void)
     socket_mutex = osMutexNew(&mutex_attr);
     if (socket_mutex == NULL)
     {
+        LOG_CRITICAL("Failed to create UDP socket mutex");
         panic("Failed to create UDP socket mutex", NULL);
         return UDP_STATUS_NO_MEMORY;
     }
@@ -278,6 +280,7 @@ udp_status_t udp_socket_deinit(void)
 {
     if (!module_initialized)
     {
+        LOG_WARNING("UDP socket module not initialized");
         return UDP_STATUS_NOT_INIT;
     }
 
@@ -285,12 +288,14 @@ udp_status_t udp_socket_deinit(void)
     {
         if (socket_pool[i].flags & SOCKET_FLAG_USED)
         {
+            LOG_DEBUG("Closing UDP socket %d", i);
             udp_socket_close(&socket_pool[i]);
         }
     }
 
     if (socket_mutex != NULL)
     {
+        LOG_DEBUG("Deleting UDP socket mutex");
         osMutexDelete(socket_mutex);
         socket_mutex = NULL;
     }
@@ -309,11 +314,13 @@ udp_status_t udp_socket_create(udp_socket_handle_t *handle, uint16_t local_port)
 
     if (!module_initialized)
     {
+        LOG_WARNING("UDP socket module not initialized");
         return UDP_STATUS_NOT_INIT;
     }
 
     if (handle == NULL)
     {
+        LOG_CRITICAL("UDP socket handle not provided");
         return UDP_STATUS_INVALID_PARAM;
     }
 
@@ -372,7 +379,6 @@ udp_status_t udp_socket_create(udp_socket_handle_t *handle, uint16_t local_port)
 
     netARP_CacheIP(NET_IF_CLASS_ETH | 0, ip_addr, netARP_CacheFixedIP);
     osMutexRelease(socket_mutex);
-    LOG_DEBUG("UDP socket created on port %u", local_port);
     return UDP_STATUS_OK;
 
 cleanup_pool:
@@ -393,11 +399,13 @@ udp_status_t udp_socket_close(udp_socket_handle_t handle)
 {
     if (!module_initialized)
     {
+        LOG_WARNING("UDP socket module not initialized");
         return UDP_STATUS_NOT_INIT;
     }
 
     if (handle == NULL)
     {
+        LOG_CRITICAL("UDP socket handle not provided");
         return UDP_STATUS_INVALID_PARAM;
     }
 
@@ -407,6 +415,7 @@ udp_status_t udp_socket_close(udp_socket_handle_t handle)
 
     if (!(sock->flags & SOCKET_FLAG_USED))
     {
+        LOG_WARNING("UDP socket handle not in use");
         osMutexRelease(socket_mutex);
         return UDP_STATUS_INVALID_PARAM;
     }
@@ -414,6 +423,7 @@ udp_status_t udp_socket_close(udp_socket_handle_t handle)
     sock->flags |= SOCKET_FLAG_CLOSING;
     if (sock->rx_queue != NULL)
     {
+        LOG_DEBUG("Resetting RX message queue before closing socket");
         (void)osMessageQueueReset(sock->rx_queue);
         udp_rx_pkt_t *closing = UDP_RX_PKT_CLOSING;
         (void)osMessageQueuePut(sock->rx_queue, &closing, 0U, 0U);
@@ -438,11 +448,13 @@ udp_status_t udp_socket_send(
 {
     if (!module_initialized)
     {
+        LOG_WARNING("UDP socket module not initialized");
         return UDP_STATUS_NOT_INIT;
     }
 
     if (handle == NULL || remote == NULL || data == NULL || len == 0)
     {
+        LOG_CRITICAL("Invalid parameter(s) provided to udp_socket_send");
         return UDP_STATUS_INVALID_PARAM;
     }
 
@@ -456,11 +468,13 @@ udp_status_t udp_socket_send(
 
     if (!(sock->flags & SOCKET_FLAG_BOUND))
     {
+        LOG_WARNING("UDP socket not bound");
         return UDP_STATUS_NOT_INIT;
     }
 
     if (!udp_socket_is_link_up())
     {
+        LOG_WARNING("UDP link is down");
         return UDP_STATUS_LINK_DOWN;
     }
 
@@ -499,6 +513,7 @@ udp_status_t udp_socket_sendto(
     status = udp_endpoint_create(ip_addr, port, &endpoint);
     if (status != UDP_STATUS_OK)
     {
+        LOG_CRITICAL("Invalid endpoint address: %s:%u", ip_addr, port);
         return status;
     }
 
@@ -512,11 +527,13 @@ udp_status_t udp_socket_recv(
 {
     if (!module_initialized)
     {
+        LOG_WARNING("UDP socket module not initialized");
         return UDP_STATUS_NOT_INIT;
     }
 
     if (handle == NULL || buffer == NULL || buffer_len == 0 || received == NULL)
     {
+        LOG_CRITICAL("Invalid parameter(s) provided to udp_socket_recv");
         return UDP_STATUS_INVALID_PARAM;
     }
 
@@ -524,6 +541,7 @@ udp_status_t udp_socket_recv(
 
     if (!(sock->flags & SOCKET_FLAG_BOUND))
     {
+        LOG_WARNING("UDP socket not bound");
         return UDP_STATUS_NOT_INIT;
     }
 
@@ -531,6 +549,7 @@ udp_status_t udp_socket_recv(
 
     if (sock->rx_queue == NULL)
     {
+        LOG_WARNING("UDP socket receive queue is NULL");
         return UDP_STATUS_ERROR;
     }
 
@@ -539,15 +558,18 @@ udp_status_t udp_socket_recv(
 
     if (os_status == osErrorTimeout)
     {
+        LOG_DEBUG("UDP receive timeout after %u ms", timeout_ms);
         return UDP_STATUS_TIMEOUT;
     }
     if (os_status != osOK || pkt == NULL)
     {
+        LOG_ERROR("UDP receive error: %d", os_status);
         return UDP_STATUS_ERROR;
     }
 
     if (pkt == UDP_RX_PKT_CLOSING)
     {
+        LOG_DEBUG("UDP receive queue is closing");
         return UDP_STATUS_ERROR;
     }
 
@@ -564,41 +586,6 @@ udp_status_t udp_socket_recv(
     {
         (void)osMemoryPoolFree(sock->rx_pool, pkt);
     }
-
-    return UDP_STATUS_OK;
-}
-
-udp_status_t udp_socket_set_callback(
-    udp_socket_handle_t handle, udp_recv_callback_t callback, void *user_data
-)
-{
-    if (!module_initialized)
-    {
-        return UDP_STATUS_NOT_INIT;
-    }
-
-    if (handle == NULL)
-    {
-        return UDP_STATUS_INVALID_PARAM;
-    }
-
-    osMutexAcquire(socket_mutex, osWaitForever);
-
-    udp_socket_internal_t *sock = (udp_socket_internal_t *)handle;
-
-    sock->callback           = callback;
-    sock->callback_user_data = user_data;
-
-    if (callback != NULL)
-    {
-        sock->flags |= SOCKET_FLAG_CALLBACK;
-    }
-    else
-    {
-        sock->flags &= ~SOCKET_FLAG_CALLBACK;
-    }
-
-    osMutexRelease(socket_mutex);
 
     return UDP_STATUS_OK;
 }

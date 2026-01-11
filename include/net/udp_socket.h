@@ -146,17 +146,6 @@ extern "C"
     );
 
     /**
-     * @brief Register callback for incoming data
-     * @param handle Socket handle
-     * @param callback Callback function
-     * @param user_data User context passed to callback
-     * @return UDP_STATUS_OK on success
-     */
-    udp_status_t udp_socket_set_callback(
-        udp_socket_handle_t handle, udp_recv_callback_t callback, void *user_data
-    );
-
-    /**
      * @brief Check if Ethernet link is up
      * @return true if link is up, false otherwise
      */

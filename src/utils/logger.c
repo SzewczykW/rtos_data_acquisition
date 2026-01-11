@@ -13,6 +13,7 @@
 #include "RTE_Device.h"
 #include "cmsis_os2.h"
 #include "panic.h"
+#include "system.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -38,7 +39,7 @@ extern ARM_DRIVER_USART Driver_USART3;
 #define LOGGER_TX_TIMEOUT_MS    1000 /**< Default TX timeout */
 #define LOGGER_MUTEX_TIMEOUT_MS 5000 /**< Mutex acquire timeout */
 
-static log_level_t current_log_level = LOG_LEVEL_DEBUG;
+static log_level_t current_log_level = DEFAULT_LOG_LEVEL;
 static bool        initialized       = false;
 static char        log_buffer[LOGGER_BUFFER_SIZE];
 
