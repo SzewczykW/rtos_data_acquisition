@@ -18,9 +18,10 @@
 !/.pre-commit-config.yaml
 !/.python-version
 !/LICENSE
+!/Makefile
 !/README.md
-!/data_acquisition.uvprojx
 !/data_acquisition.uvoptx
+!/data_acquisition.uvprojx
 !/lpc1768.sct
 !/pyproject.toml
 !/uv.lock
@@ -28,7 +29,6 @@
 # Allow C source and header files
 !/src/
 !/src/**/*.c
-!/src/**/*.h
 !/include/
 !/include/**/*.h
 !/data_acquisition/
@@ -42,10 +42,9 @@
 
 # Allow documentation sources and outputs
 !/docs/
-!/docs/**/*.dox
-!/docs/**/*.pdf
-!/docs/**/*.png
-!/docs/**/*.svg
-!/docs/**/*.html
-!/docs/**/*.dot
-!/docs/themes/**/*
+!/docs/**/
+!/docs/**/*
+
+# But never allow these...
+/docs/html/
+/docs/latex/

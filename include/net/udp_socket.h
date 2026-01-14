@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup UDPSocket UDP Socket
+ * @{
+ */
+
 #ifndef UDP_SOCKET_H
 #define UDP_SOCKET_H
 
@@ -191,3 +196,6 @@ extern "C"
 #endif
 
 #endif /* UDP_SOCKET_H */
+
+/** End of UDPSocket group */
+/** @} */

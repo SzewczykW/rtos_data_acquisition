@@ -1,0 +1,787 @@
+/**
+ * @mainpage RTOS Data Acquisition System for LPC1768
+ * @author Wiktor Szewczyk
+ * @author Patryk Madej
+ *
+ * @section intro_sec Introduction
+ *
+ * Data acquisition system based on the NXP LPC1768 microcontroller with CMSIS-RTOS2 (RTX5)
+ * real-time operating system. The project implements remote ADC sample collection
+ * and data transmission over Ethernet using the UDP protocol.
+ *
+ * Key features:
+ * - Network communication via Ethernet (100 Mbit/s)
+ * - Configurable acquisition trigger threshold
+ * - Custom binary application layer protocol
+ * - UART diagnostic interface
+ * - Python client application for control and data reception
+ *
+ * @section photo_sec Project Photo
+ *
+ * @image html project_photo.jpg "Data acquisition system" width=600px
+ *
+ *
+ * ---
+ *
+ * @section arch_sec System Architecture
+ *
+ * @subsection arch_firmware_sec Firmware Architecture
+ *
+ * The firmware system consists of three main layers:
+ *
+ * 1. **Hardware Abstraction Layer (HAL)** - ADC, EMAC, UART drivers
+ * 2. **System Layer** - CMSIS-RTOS2, RL-NET network stack
+ * 3. **Application Layer** - RTOS tasks, communication protocol
+ *
+ * @dot "Firmware Architecture"
+ * digraph firmware_arch {
+ *     rankdir=TB;
+ *     node [shape=box, style="filled,rounded", fontname="Arial", fontsize=10];
+ *     edge [fontname="Arial", fontsize=9];
+ *     compound=true;
+ *
+ *     subgraph cluster_app {
+ *         label = "Application Layer";
+ *         style = "filled,rounded";
+ *         color = "#E3F2FD";
+ *         fillcolor = "#E3F2FD";
+ *
+ *         task_init [label="task_init\n(startup)\nPriority: Normal\nStack: 512B", fillcolor="#FFF9C4"];
+ *         task_network [label="task_network\n(UDP comm)\nPriority: Normal\nStack: 4096B", fillcolor="#FFF9C4"];
+ *         task_acquisition [label="task_acquisition\n(ADC sampling)\nPriority: BelowNormal\nStack: 1024B", fillcolor="#FFF9C4"];
+ *         protocol [label="protocol\n(app layer)", fillcolor="#C8E6C9"];
+ *         logger [label="logger\n(diagnostic)", fillcolor="#C8E6C9"];
+ *     }
+ *
+ *     subgraph cluster_system {
+ *         label = "System Layer";
+ *         style = "filled,rounded";
+ *         color = "#F5F5F5";
+ *         fillcolor = "#F5F5F5";
+ *
+ *         udp_socket [label="udp_socket\n(wrapper)", fillcolor="white"];
+ *         rl_net [label="RL-NET\n(TCP/IP stack)", fillcolor="white"];
+ *         rtos [label="CMSIS-RTOS2\n(RTX5)", fillcolor="white"];
+ *         usart_drv [label="USART Driver\n(CMSIS)", fillcolor="white"];
+ *     }
+ *
+ *     subgraph cluster_hal {
+ *         label = "HAL Layer";
+ *         style = "filled,rounded";
+ *         color = "#FFF3E0";
+ *         fillcolor = "#FFF3E0";
+ *
+ *         eth_mac [label="ETH_MAC\n(EMAC)", fillcolor="#FFCC80"];
+ *         eth_phy [label="ETH_PHY\n(DP83848)", fillcolor="#FFCC80"];
+ *         adc_drv [label="ADC Driver\n(12-bit)", fillcolor="#FFCC80"];
+ *         uart_hw [label="UART\n(debug)", fillcolor="#FFCC80"];
+ *     }
+ *
+ *     subgraph cluster_hw {
+ *         label = "LPC1768 Hardware";
+ *         style = "filled,rounded";
+ *         color = "#CFD8DC";
+ *         fillcolor = "#CFD8DC";
+ *
+ *         hw [label="MCU Peripherals\n(Cortex-M3 @ 100MHz)", fillcolor="#90A4AE", fontcolor="white"];
+ *     }
+ *
+ *     // Task connections
+ *     task_init -> task_network [label="start", style=dashed];
+ *     task_init -> task_acquisition [label="start", style=dashed];
+ *     task_network -> task_acquisition [dir=both, label="data flow"];
+ *
+ *     // App layer connections
+ *     task_network -> protocol;
+ *     task_acquisition -> protocol;
+ *     task_network -> logger;
+ *     task_acquisition -> logger;
+ *
+ *     // System layer connections
+ *     protocol -> udp_socket;
+ *     udp_socket -> rl_net;
+ *     rl_net -> rtos;
+ *     logger -> usart_drv;
+ *     usart_drv -> rtos;
+ *
+ *     // HAL connections
+ *     rl_net -> eth_mac [lhead=cluster_hal];
+ *     eth_mac -> eth_phy;
+ *     task_acquisition -> adc_drv [label="ADC read"];
+ *     usart_drv -> uart_hw;
+ *
+ *     // Hardware connections
+ *     eth_phy -> hw;
+ *     adc_drv -> hw;
+ *     uart_hw -> hw;
+ * }
+ * @enddot
+ *
+ * @subsection arch_software_sec Host Software Architecture
+ *
+ * @dot "Host Software Architecture"
+ * digraph software_arch {
+ *     rankdir=TB;
+ *     node [shape=box, style="filled,rounded", fontname="Arial", fontsize=10];
+ *     edge [fontname="Arial", fontsize=9];
+ *
+ *     subgraph cluster_ui {
+ *         label = "User Interface";
+ *         style = "filled,rounded";
+ *         color = "#E8F5E9";
+ *         fillcolor = "#E8F5E9";
+ *
+ *         cli [label="CLI (cli.py)\n\nCommands:\nstart, stop, status\nconfigure, ping", fillcolor="#A5D6A7"];
+ *     }
+ *
+ *     subgraph cluster_client {
+ *         label = "Client Layer";
+ *         style = "filled,rounded";
+ *         color = "#E3F2FD";
+ *         fillcolor = "#E3F2FD";
+ *
+ *         client [label="DataAcquisitionClient\n(client.py)\n\n• UDP connection management\n• Command transmission\n• Packet reception and decoding\n• Session statistics", fillcolor="#90CAF9"];
+ *     }
+ *
+ *     subgraph cluster_proto {
+ *         label = "Protocol Layer";
+ *         style = "filled,rounded";
+ *         color = "#FFF3E0";
+ *         fillcolor = "#FFF3E0";
+ *
+ *         protocol [label="Protocol (protocol.py)\n\n• Message type definitions\n• ProtocolBuilder\n• Header parsing\n• Magic number validation", fillcolor="#FFCC80"];
+ *     }
+ *
+ *     subgraph cluster_transport {
+ *         label = "Transport Layer";
+ *         style = "filled,rounded";
+ *         color = "#ECEFF1";
+ *         fillcolor = "#ECEFF1";
+ *
+ *         udp [label="UDP Socket\n(Python socket)", fillcolor="#B0BEC5"];
+ *     }
+ *
+ *     cli -> client;
+ *     client -> protocol;
+ *     protocol -> udp;
+ *
+ *     // External connection
+ *     device [label="LPC1768\nDevice", shape=box3d, fillcolor="#FFCDD2"];
+ *     udp -> device [label="UDP/IP\nPort 5000", style=bold, color="#1976D2"];
+ * }
+ * @enddot
+ *
+ * ---
+ *
+ * @section hw_sec Hardware
+ *
+ * @subsection hw_mcu_sec Microcontroller
+ *
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Model | NXP LPC1768 (ARM Cortex-M3) |
+ * | Frequency | 100 MHz |
+ * | Flash | 512 KB |
+ * | SRAM | 64 KB (32 KB local + 32 KB AHB) |
+ * | ADC | 12-bit, 8 channels, 200 kS/s |
+ * | Ethernet | 10/100 Mbit/s MAC |
+ *
+ * @subsection hw_phy_sec PHY Module
+ *
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Model | Texas Instruments DP83848 |
+ * | Interface | RMII |
+ * | Speed | 10/100 Mbit/s |
+ * | Connector | RJ-45 with transformer |
+ *
+ * @subsection hw_connections_sec Hardware Connections
+ *
+ * @dot "Hardware Connection Diagram"
+ * digraph hw_connections {
+ *     rankdir=TB;
+ *     node [shape=box, style="filled,rounded", fontname="Arial", fontsize=10];
+ *     edge [fontname="Arial", fontsize=9];
+ *     splines=ortho;
+ *
+ *     subgraph cluster_mcu {
+ *         label = "LPC1768 (ARM Cortex-M3)";
+ *         style = "filled,rounded";
+ *         color = "#E3F2FD";
+ *         fillcolor = "#E3F2FD";
+ *
+ *         emac [label="EMAC\nP1.0-17\n(RMII)", fillcolor="#90CAF9"];
+ *         adc [label="ADC\nP0.23\n(AD0.0)", fillcolor="#90CAF9"];
+ *         uart [label="UART0\nP0.2-3\n(TX/RX)", fillcolor="#90CAF9"];
+ *         gpio [label="GPIO\nP1.14\n(RX_ER)", fillcolor="#90CAF9"];
+ *     }
+ *
+ *     // External components
+ *     phy [label="DP83848\n(PHY)\nRMII Interface", fillcolor="#FFCC80"];
+ *     analog [label="Analog\nSignal\n0-3.3V", fillcolor="#C8E6C9"];
+ *     usb_uart [label="USB-UART\nConverter\n(CP2102)", fillcolor="#CE93D8"];
+ *     pulldown [label="Pull-down\nResistor", fillcolor="#FFCDD2"];
+ *
+ *     rj45 [label="RJ-45\nConnector", shape=box3d, fillcolor="#B0BEC5"];
+ *     network [label="Switch /\nRouter", shape=box3d, fillcolor="#78909C", fontcolor="white"];
+ *     pc_terminal [label="PC\n(Terminal)", shape=box3d, fillcolor="#A5D6A7"];
+ *
+ *     // Connections
+ *     emac -> phy [label="RMII"];
+ *     phy -> rj45 [label="MDI"];
+ *     rj45 -> network [label="Ethernet"];
+ *
+ *     adc -> analog [dir=back, label="input"];
+ *
+ *     uart -> usb_uart [label="TTL"];
+ *     usb_uart -> pc_terminal [label="USB"];
+ *
+ *     gpio -> pulldown [label="PHY RX_ER\nignored", style=dashed, color="red"];
+ * }
+ * @enddot
+ *
+ * **ADC Pinout:**
+ * | Channel | Pin | Function |
+ * |---------|-----|----------|
+ * | AD0.0 | P0.23 | Analog input (default) |
+ * | AD0.1 | P0.24 | Analog input |
+ * | AD0.2 | P0.25 | Analog input |
+ * | AD0.3 | P0.26 | Analog input |
+ * | AD0.4 | P1.30 | Analog input |
+ * | AD0.5 | P1.31 | Analog input |
+ * | AD0.6 | P0.3  | Analog input |
+ * | AD0.7 | P0.2  | Analog input |
+ *
+ * ---
+ *
+ * @section drivers_sec Drivers
+ *
+ * @subsection drv_adc_sec ADC Driver
+ *
+ * The ADC driver (`adc.c/adc.h`) handles the 12-bit analog-to-digital converter:
+ *
+ * - **Resolution:** 12 bits (0-4095)
+ * - **Reference voltage:** 3.3V
+ * - **ADC clock:** 5 MHz (PCLK/5)
+ * - **Mode:** Interrupt-driven (non-blocking) or synchronous (blocking)
+ *
+ * @warning The ADC driver is NOT thread-safe. Synchronization must be ensured by the upper layer.
+ *
+ * Main API functions:
+ * - `adc_init()` - initialize converter and configure pin
+ * - `adc_start_conversion()` - start conversion (non-blocking)
+ * - `adc_read_sync()` - synchronous read (blocking)
+ * - `adc_deinit()` - deinitialization
+ *
+ * @subsection drv_emac_sec Ethernet Driver (EMAC)
+ *
+ * Uses CMSIS drivers:
+ * - **Driver_ETH_MAC0** - LPC1768 MAC controller
+ * - **Driver_ETH_PHY0** - DP83848 support
+ *
+ * RX filter configuration:
+ * @code{.c}
+ * LPC_EMAC->RxFilterCtrl = 0x22;  // Unicast + Broadcast (no Multicast)
+ * @endcode
+ *
+ * @subsection drv_uart_sec UART Driver (Logger)
+ *
+ * The logger module uses CMSIS USART Driver:
+ * - **Default interface:** USART1 (configurable via RTE_Device.h)
+ * - **Baud rate:** 115200
+ * - **Format:** 8N1 (8 data bits, no parity, 1 stop bit)
+ * - **Synchronization:** Mutex + Binary semaphore
+ *
+ * ---
+ *
+ * @section tasks_sec RTOS Tasks
+ *
+ * @subsection task_init_sec Task Init (task_init.c)
+ *
+ * Initialization task executed once at system startup:
+ *
+ * **Responsibilities:**
+ * 1. Configure pin P1.14 as GPIO with pull-down to ignore PHY RX_ER signal as we do not need it while gathering big amounts of data
+ * 2. Set RX filter in EMAC controller to accept only unicast and broadcast packets as we do not need multicast packets
+ * 3. Start `task_network` and `task_acquisition` tasks
+ * 4. Terminate own thread (`osThreadExit`)
+ *
+ * **Parameters:**
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Priority | osPriorityNormal |
+ * | Stack | 512 bytes |
+ *
+ * @subsection task_network_sec Task Network (task_network.c)
+ *
+ * Main UDP network communication task:
+ *
+ * **States:**
+ * | State | Description |
+ * |-------|-------------|
+ * | NET_STATE_INIT | Initialization |
+ * | NET_STATE_WAIT_LINK | Waiting for Ethernet link |
+ * | NET_STATE_WAIT_IP | Waiting for IP address (DHCP) |
+ * | NET_STATE_READY | Ready for communication |
+ * | NET_STATE_ERROR | Error state |
+ *
+ * **Responsibilities:**
+ * - Manage UDP connection (port 5000)
+ * - Receive and parse commands from host
+ * - Send data packets to host
+ * - Handle status and ping/pong
+ *
+ * **Parameters:**
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Priority | osPriorityNormal |
+ * | Stack | 4096 bytes |
+ * | UDP Port | 5000 |
+ *
+ * @subsection task_acq_sec Task Acquisition (task_acquisition.c)
+ *
+ * ADC data acquisition task:
+ *
+ * **States:**
+ * | State | Description |
+ * |-------|-------------|
+ * | ACQ_STATE_IDLE | Idle (waiting for START) |
+ * | ACQ_STATE_RUNNING | Acquisition active |
+ * | ACQ_STATE_ERROR | Error state |
+ *
+ * **Algorithm:**
+ * 1. Read ADC sample (synchronous)
+ * 2. Compare with threshold
+ * 3. Buffer samples above threshold
+ * 4. After collecting batch_size samples - send UDP packet
+ *
+ * **Parameters:**
+ * | Parameter | Value |
+ * |-----------|-------|
+ * | Priority | osPriorityBelowNormal |
+ * | Stack | 1024 bytes |
+ * | Default channel | ADC_CHANNEL_0 |
+ * | Default threshold | 1650 mV (50%) |
+ * | Default batch | 100 samples |
+ * | Max batch | 100 samples |
+ *
+ * ---
+ *
+ * @section sync_sec Thread Synchronization
+ *
+ * @subsection sync_uart_sec UART Synchronization (Logger)
+ *
+ * The logger module uses two-level synchronization:
+ *
+ * 1. **Mutex** (`logger_mutex`) - protects buffer and UART access
+ *    - Timeout: 5000 ms
+ *    - Prevents message interleaving from different threads
+ *
+ * 2. **Binary semaphore** (`tx_semaphore`) - signals transmission completion
+ *    - Initialization: 0 (blocked)
+ *    - Released in USART callback on TX_COMPLETE event
+ *    - Timeout: 1000 ms
+ *
+ * @dot "UART Synchronization (Logger)"
+ * digraph uart_sync {
+ *     rankdir=LR;
+ *     node [shape=box, style="filled,rounded", fontname="Arial", fontsize=9];
+ *     edge [fontname="Arial", fontsize=8];
+ *
+ *     subgraph cluster_thread_a {
+ *         label = "Thread A";
+ *         style = "filled,rounded";
+ *         color = "#E3F2FD";
+ *         fillcolor = "#E3F2FD";
+ *
+ *         a1 [label="osMutexAcquire\n(mutex)", fillcolor="#90CAF9"];
+ *         a2 [label="USART_Send\n(buffer)", fillcolor="#90CAF9"];
+ *         a3 [label="osSemaphoreAcquire\n(sem) - WAIT", fillcolor="#FFF9C4"];
+ *         a4 [label="osMutexRelease\n(mutex)", fillcolor="#90CAF9"];
+ *     }
+ *
+ *     subgraph cluster_driver {
+ *         label = "UART Driver";
+ *         style = "filled,rounded";
+ *         color = "#FFF3E0";
+ *         fillcolor = "#FFF3E0";
+ *
+ *         d1 [label="TX in progress", fillcolor="#FFCC80"];
+ *         d2 [label="TX_COMPLETE\nIRQ", fillcolor="#FFCC80"];
+ *         d3 [label="osSemaphoreRelease\n(sem)", fillcolor="#C8E6C9"];
+ *     }
+ *
+ *     subgraph cluster_thread_b {
+ *         label = "Thread B";
+ *         style = "filled,rounded";
+ *         color = "#FCE4EC";
+ *         fillcolor = "#FCE4EC";
+ *
+ *         b1 [label="osMutexAcquire\n(mutex)", fillcolor="#F8BBD9"];
+ *         b2 [label="BLOCKED", fillcolor="#FFCDD2"];
+ *         b3 [label="MUTEX\nACQUIRED", fillcolor="#C8E6C9"];
+ *     }
+ *
+ *     a1 -> a2;
+ *     a2 -> d1;
+ *     a2 -> a3;
+ *     d1 -> d2;
+ *     d2 -> d3;
+ *     d3 -> a3 [style=dashed, label="signal"];
+ *     a3 -> a4;
+ *
+ *     b1 -> b2 [label="try"];
+ *     a4 -> b3 [style=dashed, label="unlock"];
+ * }
+ * @enddot
+ *
+ * @subsection sync_udp_sec UDP Socket Synchronization
+ *
+ * The `udp_socket` module uses:
+ *
+ * 1. **Mutex** (`socket_mutex`) - protects socket pool
+ * 2. **Message Queue** (`rx_queue`) - queue for received packets
+ * 3. **Memory Pool** (`rx_pool`) - buffer pool for RX packets
+ *
+ * Producer-consumer pattern:
+ * - **Producer:** Network callback (ISR context)
+ * - **Consumer:** Task Network (thread context)
+ *
+ * @subsection sync_shared_sec Shared Variables
+ *
+ * Variables shared between tasks are marked as `volatile`:
+ * - `current_state` (in task_network and task_acquisition)
+ * - `target_set_by_start` - flag indicating target set by START command
+ *
+ * ---
+ *
+ * @section scatter_sec Scatter File (Linker Script)
+ *
+ * Due to limited RAM (64 KB) and Ethernet driver requirements,
+ * memory was optimized using the scatter file `lpc1768.sct`:
+ *
+ * @subsection scatter_layout_sec Memory Layout
+ *
+ * @dot "LPC1768 Memory Map"
+ * digraph memory_map {
+ *     rankdir=TB;
+ *     node [shape=record, fontname="Arial", fontsize=9];
+ *     edge [fontname="Arial", fontsize=8];
+ *
+ *     flash [label="{FLASH (512 KB)\n0x00000000 - 0x0007FFFF|{ER_IROM1\n(Code + RO Data)|• Vector Table (RESET)\l• Program Code (.text)\l• Read-Only Data (.rodata)\l}}", fillcolor="#E3F2FD", style=filled];
+ *
+ *     ahb_sram [label="{AHB SRAM (32 KB)\n0x2007C000 - 0x20083FFF|{RW_AHB_SPILL (16 KB)\n0x2007C000 - 0x2007FFFF|• Overflow for RW/ZI variables\l• Application data (spill)\l}|{RW_EMAC_DMA (16 KB)\n0x20080000 - 0x20083FFF|• Ethernet DMA buffers\l• TX/RX descriptors\l• REQUIRED by EMAC!\l}}", fillcolor="#FFF3E0", style=filled];
+ *
+ *     local_sram [label="{Local SRAM (32 KB)\n0x10000000 - 0x10007FFF|{RW_IRAM1 (~31 KB)\n0x10000000 - 0x10007BFF|• RTX Kernel (rtx_kernel.o)\l• RTX Library (rtx_lib.o)\l• Other RW/ZI variables\l}|{ARM_STACK (1 KB)\n0x10007C00 - 0x10007FFF|• Main stack (MSP)\l• Interrupt handling\l}}", fillcolor="#C8E6C9", style=filled];
+ *
+ *     // Labels for memory regions
+ *     flash -> ahb_sram [style=invis];
+ *     ahb_sram -> local_sram [style=invis];
+ * }
+ * @enddot
+ *
+ * @subsection scatter_rationale_sec Memory Layout Rationale
+ *
+ * The memory layout is based on the following requirements:
+ *
+ * 1. **EMAC DMA buffers** must be in AHB SRAM (0x20080000+)
+ *    - Hardware requirement of LPC1768 Ethernet controller
+ *    - Allocation: `*EMAC_LPC17xx.o (+RW +ZI)`
+ *
+ * 2. **RTX Kernel data** should be in fast Local SRAM
+ *    - Minimizes scheduler latency
+ *    - Priority placement: `rtx_kernel.o`, `rtx_lib.o`
+ *
+ * 3. **Main stack (MSP)** at the end of Local SRAM
+ *    - 1 KB for interrupt handling
+ *    - Separated from application data
+ *
+ * 4. **Spill region** for overflow
+ *    - When Local SRAM is full, data goes to AHB SRAM
+ *    - `.ANY (+RW +ZI)` in both regions
+ *
+ * ---
+ *
+ * @section protocol_sec Communication Protocol
+ *
+ * @subsection proto_overview_sec Protocol Overview
+ *
+ * Custom binary application layer protocol transported over UDP:
+ * - **Magic number:** 0xDA7A
+ * - **Endianness:** Little-endian
+ * - **Port:** 5000 (configurable)
+ *
+ * @subsection proto_header_sec Packet Header (7 bytes)
+ *
+ * | Byte | Field | Size | Value/Description |
+ * |------|-------|------|-------------------|
+ * | 0-1 | MAGIC | 2 bytes | 0xDA7A (protocol identifier) |
+ * | 2 | MSG_TYPE | 1 byte | Message type (see types table) |
+ * | 3-4 | SEQUENCE | 2 bytes | Sequence number (little-endian) |
+ * | 5-6 | PAYLOAD_LEN | 2 bytes | Payload length (little-endian) |
+ *
+ * **Field Details:**
+ *
+ * | Field | Size | Description |
+ * |-------|------|-------------|
+ * | MAGIC | 2 bytes | Protocol identifier (0xDA7A) |
+ * | MSG_TYPE | 1 byte | Message type |
+ * | SEQUENCE | 2 bytes | Sequence number (little-endian) |
+ * | PAYLOAD_LEN | 2 bytes | Payload length (little-endian) |
+ *
+ * @subsection proto_msgtypes_sec Message Types
+ *
+ * | Type | Value | Direction | Description |
+ * |------|-------|-----------|-------------|
+ * | MSG_TYPE_PING | 0x01 | Host -> Device | Ping request |
+ * | MSG_TYPE_PONG | 0x02 | Device -> Host | Pong response |
+ * | MSG_TYPE_DATA | 0x10 | Device -> Host | ADC data packet |
+ * | MSG_TYPE_CMD | 0x20 | Host -> Device | Control command |
+ * | MSG_TYPE_STATUS | 0x30 | Device -> Host | Status report |
+ *
+ * @subsection proto_data_sec Data Packet (MSG_TYPE_DATA = 0x10)
+ *
+ * **Payload Structure:**
+ *
+ * | Offset | Field | Size | Description |
+ * |--------|-------|------|-------------|
+ * | 0 | CHANNEL | 1 byte | ADC channel (0-7) |
+ * | 1 | RESERVED | 1 byte | Reserved (0x00) |
+ * | 2-3 | SAMPLE_CNT | 2 bytes | Number of samples (N) |
+ * | 4+ | samples[] | 2*N bytes | 12-bit sample array (little-endian) |
+ *
+ * @note Each sample is a 16-bit value (little-endian), with only the lower 12 bits used.
+ *
+ * **Field Details:**
+ *
+ * | Field | Size | Description |
+ * |-------|------|-------------|
+ * | CHANNEL | 1 byte | ADC channel (0-7) |
+ * | RESERVED | 1 byte | Reserved (0x00) |
+ * | SAMPLE_CNT | 2 bytes | Number of samples |
+ * | samples[] | 2*N bytes | 12-bit sample array |
+ *
+ * @subsection proto_cmd_sec Command Packet (MSG_TYPE_CMD = 0x20)
+ *
+ * **Payload Structure:**
+ *
+ * | Offset | Field | Size | Description |
+ * |--------|-------|------|-------------|
+ * | 0 | CMD | 1 byte | Command code |
+ * | 1 | PARAM_TYPE | 1 byte | Configuration parameter type |
+ * | 2-3 | PARAM | 2 bytes | Parameter value (little-endian) |
+ *
+ * **Command Codes:**
+ * | Command | Value | Description |
+ * |---------|-------|-------------|
+ * | CMD_START_ACQ | 0x01 | Start acquisition |
+ * | CMD_STOP_ACQ | 0x02 | Stop acquisition |
+ * | CMD_GET_STATUS | 0x03 | Request status |
+ * | CMD_CONFIGURE | 0x04 | Configure parameters |
+ *
+ * **Configuration Parameter Types (for CMD_CONFIGURE):**
+ * | Type | Value | Range | Description |
+ * |------|-------|-------|-------------|
+ * | CONFIG_THRESHOLD_PERCENT | 0 | 0-100 | Threshold as % of Vref |
+ * | CONFIG_THRESHOLD_MV | 1 | 0-3300 | Threshold in mV |
+ * | CONFIG_BATCH_SIZE | 2 | 1-100 | Samples per packet |
+ * | CONFIG_CHANNEL | 3 | 0-7 | ADC channel |
+ * | CONFIG_RESET_SEQUENCE | 4 | - | Reset sequence |
+ * | CONFIG_LOG_LEVEL | 5 | 0-5 | Log level |
+ *
+ * @subsection proto_status_sec Status Packet (MSG_TYPE_STATUS = 0x30)
+ *
+ * **Payload Structure:**
+ *
+ * | Offset | Field | Size | Description |
+ * |--------|-------|------|-------------|
+ * | 0 | ACQ | 1 byte | Acquisition flag (0=stopped, 1=running) |
+ * | 1 | CH | 1 byte | Current ADC channel (0-7) |
+ * | 2-3 | THRESH_MV | 2 bytes | Trigger threshold in mV (little-endian) |
+ * | 4-7 | UPTIME | 4 bytes | System uptime in seconds (little-endian) |
+ * | 8-11 | SAMPLES_SENT | 4 bytes | Total samples sent (little-endian) |
+ *
+ * **Field Details:**
+ *
+ * | Field | Size | Description |
+ * |-------|------|-------------|
+ * | ACQ | 1 byte | Acquisition flag (0/1) |
+ * | CH | 1 byte | Current ADC channel |
+ * | THRESH_MV | 2 bytes | Threshold in mV |
+ * | UPTIME | 4 bytes | Uptime in seconds |
+ * | SAMPLES_SENT | 4 bytes | Number of samples sent |
+ *
+ * ---
+ *
+ * @section software_sec Client Software
+ *
+ * The Python client application (`data_acquisition/`) is used to control the system
+ * and receive data.
+ *
+ * @subsection sw_install_sec Installation
+ *
+ * @code{.sh}
+ * pip install .
+ * @endcode
+ *
+ * @subsection sw_usage_sec CLI Usage
+ *
+ * @code{.sh}
+ * uv run .\data_acquisition\cli.py --help
+ * usage: cli.py [-h] [-H HOST] [-p PORT] [--log {DEBUG,INFO,WARNING,ERROR,CRITICAL}] {start,stop,status,ping,configure} ...
+ *
+ * Data Acquisition Client for LPC1768 ADC System
+ *
+ * positional arguments:
+ *   {start,stop,status,ping,configure}
+ *                         Command to execute
+ *     start               Start acquisition (requires --duration or --samples; configuration args are optional)
+ *     stop                Stop acquisition
+ *     status              Get device status
+ *     ping                Ping the device
+ *     configure           Configure device
+ *
+ * options:
+ *   -h, --help            show this help message and exit
+ *   -H, --host HOST       Target IP address
+ *   -p, --port PORT       Target UDP port
+ *   --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+ *                         Python logging level
+ *
+ * Examples:
+ *     cli.py start --duration 5                              # Acquire for 5 seconds (no reconfig)
+ *     cli.py start --samples 20000                           # Acquire until at least 20000 samples
+ *     cli.py start --duration 10 --threshold-mv 1650 --channel 0
+ *     cli.py start --samples 50000 --threshold-percent 50 --channel 1
+ *     cli.py start --duration 10 --batch-size 100            # Custom batch size
+ *     cli.py start --duration 10 --log-level 0               # Device debug logging
+ *     cli.py status                                          # Get device status
+ *     cli.py ping -c 5                                       # Ping 5 times
+ *     cli.py configure --log-level 2                         # Set device log to WARNING
+ *     cli.py configure --reset-sequence                      # Reset packet counter
+ *
+ * Defaults:
+ *     - batch-size: 100 samples per packet
+ *     - device log-level: 1 (INFO)
+ *     - python logs: INFO
+ * @endcode
+ *
+ * ---
+ *
+ * @section overview_sec Project Overview
+ *
+ * @subsection overview_purpose_sec Purpose
+ *
+ * The Data Acquisition (DAQ) system is a complete solution for remote analog signal
+ * acquisition using the LPC1768 microcontroller:
+ *
+ * - **Remote acquisition:** ADC sample collection and Ethernet transmission
+ * - **Configurability:** Trigger threshold, batch size, ADC channel
+ * - **Diagnostics:** UART logger with configurable levels
+ * - **Scalability:** Protocol allows for functionality extension
+ *
+ * @subsection overview_usecase_sec Example Applications
+ *
+ * - Sensor signal monitoring
+ * - Threshold-crossing event recording
+ * - Data acquisition for offline analysis
+ * - Analog circuit testing and validation
+ *
+ * ---
+ *
+ * @section issues_sec Known Issues and Limitations
+ *
+ * @subsection issues_phy_sec PHY Module RX_ER Signal
+ *
+ * RX_ER (P1.14) on the DP83848 has a default pull-up, which results in
+ * continuous receive error indication if not handled.
+ * The signal is therefore forced low, as RX_ER is not used.
+ *
+ * ---
+ *
+ * @section files_sec Project Structure
+ *
+ * @verbatim
+ * rtos_data_acquisition/
+ * +-- include/
+ * |   +-- app/
+ * |   |   +-- system.h
+ * |   +-- drivers/
+ * |   |   +-- adc.h
+ * |   +-- net/
+ * |   |   +-- protocol.h
+ * |   |   +-- udp_socket.h
+ * |   +-- tasks/
+ * |   |   +-- task_acquisition.h
+ * |   |   +-- task_init.h
+ * |   |   +-- task_network.h
+ * |   +-- utils/
+ * |       +-- logger.h
+ * |       +-- panic.h
+ * +-- src/
+ * |   +-- app/
+ * |   |   +-- main.c
+ * |   |   +-- system.c
+ * |   +-- drivers/
+ * |   |   +-- adc.c
+ * |   +-- net/
+ * |   |   +-- protocol.c
+ * |   |   +-- udp_socket.c
+ * |   +-- tasks/
+ * |   |   +-- task_acquisition.c
+ * |   |   +-- task_init.c
+ * |   |   +-- task_network.c
+ * |   +-- utils/
+ * |       +-- logger.c
+ * |       +-- panic.c
+ * +-- data_acquisition/
+ * |   +-- cli.py
+ * |   +-- client.py
+ * |   +-- protocol.py
+ * +-- RTE/
+ * +-- docs/
+ * +-- lpc1768.sct
+ * +-- pyproject.toml
+ * @endverbatim
+ *
+ * ---
+ *
+ * @section build_sec Build and Run
+ *
+ * @subsection build_fw_sec Firmware (Keil uVision)
+ *
+ * 1. Open project `data_acquisition.uvprojx` in Keil uVision
+ * 2. Build -> Rebuild All Target Files
+ * 3. Flash -> Download
+ *
+ * @subsection build_sw_sec Software (Python)
+ *
+ * @code{.sh}
+ * cd rtos_data_acquisition
+ * pip install .
+ * data-acquisition --help
+ * @endcode
+ *
+ * ---
+ * @subsection build_docs_sec Documentation (Doxygen)
+ *
+ * To generate documentation one needs to have following packages installed:
+ * - Doxygen>=1.9.8
+ * - Graphviz>=2.42.2
+ *
+ * Then run the following command in the project root directory:
+ * @code{.sh}
+ * make docs
+ * @endcode
+ *
+ * The documentation will be generated in the `docs/html/` directory. Open `index.html` in a web browser to view.
+ *
+ * @section license_sec License
+ *
+ * Creative Commons 0. The authors provide no warranty, express or implied.
+ *
+ * @section authors_sec Authors
+ *
+ * - Wiktor Szewczyk
+ * - Patryk Madej
+ */

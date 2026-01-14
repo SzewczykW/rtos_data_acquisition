@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup TaskNetwork Task Network
+ * @{
+ */
+
 #ifndef TASK_NETWORK_H
 #define TASK_NETWORK_H
 
@@ -120,3 +125,6 @@ extern "C"
 #endif
 
 #endif /* TASK_NETWORK_H */
+
+/** End of TaskNetwork group */
+/** @} */

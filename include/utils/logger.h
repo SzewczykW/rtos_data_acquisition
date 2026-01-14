@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup Logger Logger
+ * @{
+ */
+
 #ifndef LOGGER_H
 #define LOGGER_H
 
@@ -140,3 +145,6 @@ extern "C"
 #endif
 
 #endif /* LOGGER_H */
+
+/** End of Logger group */
+/** @} */
