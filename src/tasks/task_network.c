@@ -126,11 +126,7 @@ handle_command(const protocol_cmd_payload_t *cmd, const udp_endpoint_t *remote)
             udp_ipv4_to_string(&remote->ip, ip_str, sizeof(ip_str));
             LOG_INFO("Acquisition target set to %s:%u", ip_str, remote->port);
 
-            if (acquisition_start() == 0)
-            {
-                LOG_INFO("Acquisition started");
-            }
-            else
+            if (acquisition_start() != 0)
             {
                 LOG_ERROR("Failed to start acquisition");
             }
@@ -139,7 +135,6 @@ handle_command(const protocol_cmd_payload_t *cmd, const udp_endpoint_t *remote)
 
         case CMD_STOP_ACQ:
             acquisition_stop();
-            LOG_INFO("Acquisition stopped");
             return;
 
         case CMD_CONFIGURE:

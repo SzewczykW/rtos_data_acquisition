@@ -52,15 +52,15 @@ class Statistics:
         elapsed = time.time() - self.start_time
         rate = self.samples_received / elapsed if elapsed > 0 else 0
 
-        print("\n" + "=" * 60)
-        print("Session Statistics")
-        print("=" * 60)
-        print(f"  Duration:         {elapsed:.2f} s")
-        print(f"  Packets received: {self.packets_received}")
-        print(f"  Samples received: {self.samples_received}")
-        print(f"  Bytes received:   {self.bytes_received}")
-        print(f"  Sample rate:      {rate:.1f} samples/s")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("Session Statistics")
+        logger.info("=" * 60)
+        logger.info(f"Duration:         {elapsed:.2f} s")
+        logger.info(f"Packets received: {self.packets_received}")
+        logger.info(f"Samples received: {self.samples_received}")
+        logger.info(f"Bytes received:   {self.bytes_received}")
+        logger.info(f"Sample rate:      {rate:.1f} samples/s")
+        logger.info("=" * 60)
 
 
 class DataAcquisitionClient:
@@ -192,6 +192,7 @@ class DataAcquisitionClient:
         if not (0 <= percent <= 100):
             raise ValueError("Threshold percentage must be between 0 and 100")
         self.send_command(Command.CONFIGURE, ConfigParam.THRESHOLD_PERCENT, percent)
+        time.sleep(0.1)  # Allow device to process command
         logger.info("Configured threshold: %d%%", percent)
 
     def configure_threshold_mv(self, mv: int) -> None:
@@ -205,19 +206,21 @@ class DataAcquisitionClient:
         if not (0 <= mv <= 3300):
             raise ValueError("Threshold in millivolts must be between 0 and 3300")
         self.send_command(Command.CONFIGURE, ConfigParam.THRESHOLD_MV, mv)
+        time.sleep(0.1)  # Allow device to process command
         logger.info("Configured threshold: %d mV", mv)
 
     def configure_batch_size(self, size: int) -> None:
         """Set batch size - samples per packet.
 
         Args:
-            size (int): Batch size (1-500)
+            size (int): Batch size (1-100)
 
         Returns: None
         """
-        if not (1 <= size <= 500):
-            raise ValueError("Batch size must be between 1 and 500")
+        if not (1 <= size <= 100):
+            raise ValueError("Batch size must be between 1 and 100")
         self.send_command(Command.CONFIGURE, ConfigParam.BATCH_SIZE, size)
+        time.sleep(0.1)  # Allow device to process command
         logger.info("Configured batch size: %d", size)
 
     def configure_channel(self, channel: int) -> None:
@@ -231,6 +234,7 @@ class DataAcquisitionClient:
         if not (0 <= channel <= 7):
             raise ValueError("ADC channel must be between 0 and 7")
         self.send_command(Command.CONFIGURE, ConfigParam.CHANNEL, channel)
+        time.sleep(0.1)  # Allow device to process command
         logger.info("Configured channel: %d", channel)
 
     def reset_sequence(self) -> None:
@@ -239,6 +243,7 @@ class DataAcquisitionClient:
         Return: None
         """
         self.send_command(Command.CONFIGURE, ConfigParam.RESET_SEQUENCE, 0)
+        time.sleep(0.1)  # Allow device to process command
         logger.info("Reset sequence counter")
 
     def set_log_level(self, level: int) -> None:
@@ -249,9 +254,10 @@ class DataAcquisitionClient:
 
         Returns: None
         """
-        if any(level == lvl.value for lvl in LogLevel):
+        if not any(level == lvl.value for lvl in LogLevel):
             raise ValueError("Invalid log level")
         self.send_command(Command.CONFIGURE, ConfigParam.LOG_LEVEL, level)
+        time.sleep(0.1)  # Allow device to process command
         logger.info("Set device log level: %d", int(level))
 
     def ping(self) -> float | None:
@@ -300,9 +306,9 @@ class DataAcquisitionClient:
         else:
             line = f"{ts:.6f},{header.sequence},{payload.channel}"
 
-        print(line, flush=True)
+        logger.debug(line)
 
-        logger.debug(
+        logger.info(
             "[%5d] CH%d: %d samples",
             header.sequence,
             payload.channel,

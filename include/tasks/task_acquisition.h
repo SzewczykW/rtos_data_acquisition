@@ -32,7 +32,7 @@ extern "C"
 /**< Default batch size */
 #define ACQUISITION_DEFAULT_BATCH_SIZE 100
 /**< Maximum batch size (samples per packet) */
-#define ACQUISITION_MAX_BATCH_SIZE 500
+#define ACQUISITION_MAX_BATCH_SIZE 100
 
     /**
      * @brief Acquisition task state

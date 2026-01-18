@@ -1,9 +1,4 @@
-"""Command-line interface for data acquisition client.
-
-NOTE: Data samples are printed to STDOUT (one CSV line per packet) so the output
-can be piped to other tools. Logs go to STDERR via the standard ``logging``
-module.
-"""
+"""Command-line interface for data acquisition client."""
 
 from __future__ import annotations
 
@@ -83,11 +78,11 @@ def cmd_status(client: DataAcquisitionClient, _args: argparse.Namespace) -> None
     status = client.get_status()
 
     if status:
-        print(f"Acquiring:    {status.acquiring}")
-        print(f"Channel:      {status.channel}")
-        print(f"Threshold:    {status.threshold_mv} mV")
-        print(f"Uptime:       {status.uptime} s")
-        print(f"Samples sent: {status.samples_sent}")
+        logger.info(f"Acquiring:    {status.acquiring}")
+        logger.info(f"Channel:      {status.channel}")
+        logger.info(f"Threshold:    {status.threshold_mv} mV")
+        logger.info(f"Uptime:       {status.uptime} s")
+        logger.info(f"Samples sent: {status.samples_sent}")
     else:
         logger.error("Failed to get status")
         sys.exit(1)
@@ -108,9 +103,9 @@ def cmd_ping(client: DataAcquisitionClient, _args: argparse.Namespace) -> None:
         rtt = client.ping()
 
         if rtt is not None:
-            print(f"Pong from {client.host}: time={rtt:.2f} ms")
+            logger.info(f"Pong from {client.host}: time={rtt:.2f} ms")
         else:
-            print("Request timed out")
+            logger.warning("Request timed out")
 
         if i < count - 1:
             time.sleep(1)
@@ -174,7 +169,7 @@ Examples:
     %(prog)s start --samples 20000                           # Acquire until at least 20000 samples
     %(prog)s start --duration 10 --threshold-mv 1650 --channel 0
     %(prog)s start --samples 50000 --threshold-percent 50 --channel 1
-    %(prog)s start --duration 10 --batch-size 200            # Custom batch size
+    %(prog)s start --duration 10 --batch-size 100            # Custom batch size
     %(prog)s start --duration 10 --log-level 0               # Device debug logging
     %(prog)s status                                          # Get device status
     %(prog)s ping -c 5                                       # Ping 5 times
@@ -185,7 +180,6 @@ Defaults:
     - batch-size: 100 samples per packet
     - device log-level: 1 (INFO)
     - python logs: INFO
-    - output: data to STDOUT (CSV lines)
         """,
     )
 
@@ -263,14 +257,12 @@ def _add_config_args(parser: argparse.ArgumentParser, required: bool = False) ->
     thresh_group.add_argument(
         "--threshold-percent",
         type=int,
-        default=50,
         metavar="PCT",
         help="Set threshold as percentage (0-100)",
     )
     thresh_group.add_argument(
         "--threshold-mv",
         type=int,
-        default=1650,
         metavar="MV",
         help="Set threshold in millivolts (0-3300)",
     )
@@ -285,21 +277,18 @@ def _add_config_args(parser: argparse.ArgumentParser, required: bool = False) ->
         "--batch-size",
         type=int,
         metavar="N",
-        default=100,
-        help="Samples per packet (1-500)",
+        help="Samples per packet (1-100)",
     )
     parser.add_argument(
         "--log-level",
         type=int,
         choices=[0, 1, 2, 3, 4, 5],
         metavar="LVL",
-        default=1,
         help="Device log level: 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR, 4=CRITICAL, 5=NONE",
     )
     parser.add_argument(
         "--reset-sequence",
         action="store_true",
-        default=False,
         help="Reset sequence counter before starting",
     )
 

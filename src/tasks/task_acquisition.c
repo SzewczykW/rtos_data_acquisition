@@ -77,6 +77,7 @@ static void acquisition_task(void *argument)
 
         threshold_adc = mv_to_adc(threshold_mv);
 
+        LOG_DEBUG("ADC value: %u, Threshold: %u", adc_value, threshold_adc);
         if (adc_value >= threshold_adc)
         {
             sample_buffer[sample_index++] = adc_value;
@@ -94,15 +95,20 @@ static void acquisition_task(void *argument)
                 {
                     if (network_send_raw(tx_buffer, packet_len) == 0)
                     {
+                        LOG_INFO(
+                            "Sent %u samples (%u bytes)", sample_index, packet_len
+                        );
                         stats.packets_sent++;
                     }
                     else
                     {
+                        LOG_ERROR("Failed to send data packet");
                         stats.errors++;
                     }
                 }
                 else
                 {
+                    LOG_CRITICAL("Failed to build data packet: %d", proto_status);
                     stats.errors++;
                 }
 
@@ -252,7 +258,7 @@ int acquisition_set_channel(adc_channel_t channel)
         LOG_ERROR("Invalid ADC channel: %u", channel);
         return -1;
     }
-
+    LOG_INFO("Switching to ADC channel %u", channel);
     /* Need to reinitialize ADC for new channel */
     if (current_channel != channel)
     {
