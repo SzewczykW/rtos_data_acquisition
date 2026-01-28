@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup TaskInit Task Init
+ * @{
+ */
+
 #ifndef TASK_INIT_H
 #define TASK_INIT_H
 
@@ -30,3 +35,6 @@ extern "C"
 #endif
 
 #endif /* TASK_INIT_H */
+
+/** End of TaskInit group */
+/** @} */

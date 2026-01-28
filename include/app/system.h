@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup System System
+ * @{
+ */
+
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
@@ -22,3 +27,6 @@ extern "C"
 #endif
 
 #endif /* SYSTEM_H */
+
+/** End of System group */
+/** @} */

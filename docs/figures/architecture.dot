@@ -1,0 +1,78 @@
+/**
+ * @file architecture.dot
+ * @brief System architecture diagram
+ *
+ * Compile: dot -Tpng architecture.dot -o architecture.png
+ */
+
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=filled, fontname="Arial", fontsize=10];
+    edge [fontname="Arial", fontsize=9];
+
+    subgraph cluster_app {
+        label = "Application Layer";
+        style = filled;
+        color = lightblue;
+
+        task_init [label="task_init\n(startup)", fillcolor=lightyellow];
+        task_network [label="task_network\n(UDP comm)\nStack: 4KB", fillcolor=lightyellow];
+        task_acquisition [label="task_acquisition\n(ADC sampling)\nStack: 1KB", fillcolor=lightyellow];
+        protocol [label="protocol\n(app layer)", fillcolor=lightgreen];
+        logger [label="logger\n(diagnostic)", fillcolor=lightgreen];
+    }
+
+    subgraph cluster_system {
+        label = "System Layer";
+        style = filled;
+        color = lightgray;
+
+        udp_socket [label="udp_socket\n(wrapper)", fillcolor=white];
+        rl_net [label="RL-NET\n(TCP/IP stack)", fillcolor=white];
+        rtos [label="CMSIS-RTOS2\n(RTX5)", fillcolor=white];
+        usart_drv [label="USART Driver\n(CMSIS)", fillcolor=white];
+    }
+
+    subgraph cluster_hal {
+        label = "HAL Layer";
+        style = filled;
+        color = lightyellow;
+
+        eth_mac [label="ETH_MAC\n(EMAC)", fillcolor=orange];
+        eth_phy [label="ETH_PHY\n(DP83848)", fillcolor=orange];
+        adc_drv [label="ADC Driver\n(12-bit)", fillcolor=orange];
+        uart_hw [label="UART\n(debug)", fillcolor=orange];
+    }
+
+    subgraph cluster_hw {
+        label = "LPC1768 Hardware";
+        style = filled;
+        color = gray;
+
+        hw [label="MCU Peripherals", fillcolor=darkgray, fontcolor=white];
+    }
+
+    // Connections
+    task_init -> task_network [label="start"];
+    task_init -> task_acquisition [label="start"];
+    task_network -> protocol;
+    task_acquisition -> protocol;
+    task_network -> logger;
+    task_acquisition -> logger;
+
+    protocol -> udp_socket;
+    logger -> usart_drv;
+
+    udp_socket -> rl_net;
+    rl_net -> rtos;
+    usart_drv -> rtos;
+
+    rl_net -> eth_mac;
+    eth_mac -> eth_phy;
+    task_acquisition -> adc_drv [label="ADC read"];
+    usart_drv -> uart_hw;
+
+    eth_phy -> hw;
+    adc_drv -> hw;
+    uart_hw -> hw;
+}

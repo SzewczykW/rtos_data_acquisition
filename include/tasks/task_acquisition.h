@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup TaskAcquisition Task Acquisition
+ * @{
+ */
+
 #ifndef TASK_ACQUISITION_H
 #define TASK_ACQUISITION_H
 
@@ -147,3 +152,6 @@ extern "C"
 #endif
 
 #endif /* TASK_ACQUISITION_H */
+
+/** End of TaskAcquisition group */
+/** @} */

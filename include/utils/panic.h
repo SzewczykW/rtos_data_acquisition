@@ -5,6 +5,11 @@
  * @author Patryk Madej
  */
 
+/**
+ * @defgroup Panic Panic
+ * @{
+ */
+
 #ifndef PANIC_H
 #define PANIC_H
 
@@ -28,3 +33,6 @@ extern "C"
 #endif
 
 #endif /* PANIC_H */
+
+/** End of Panic group */
+/** @} */

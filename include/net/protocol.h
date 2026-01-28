@@ -6,6 +6,11 @@
  */
 
 /**
+ * @defgroup Protocol Protocol
+ * @{
+ */
+
+/**
  * @verbatim
  * PROTOCOL HEADER (7 bytes)
  * +--------+--------+--------+--------+--------+--------+--------+
@@ -139,11 +144,10 @@ extern "C"
     {
         CONFIG_THRESHOLD_PERCENT = 0, /**< Threshold as percentage (0-100) */
         CONFIG_THRESHOLD_MV      = 1, /**< Threshold in millivolts (0-3300) */
-        CONFIG_BATCH_SIZE        = 2, /**< Batch size, samples per packet, see
-                                            TASK_ACQUISITION_MAX_BATCH_SIZE */
-        CONFIG_CHANNEL        = 3,    /**< ADC channel (0-7) */
-        CONFIG_RESET_SEQUENCE = 4,    /**< Reset sequence counter (param ignored) */
-        CONFIG_LOG_LEVEL      = 5     /**< Set log level (0=DEBUG..5=NONE) */
+        CONFIG_BATCH_SIZE        = 2, /**< Batch size, samples per packet (1-500) */
+        CONFIG_CHANNEL           = 3, /**< ADC channel (0-7) */
+        CONFIG_RESET_SEQUENCE    = 4, /**< Reset sequence counter (param ignored) */
+        CONFIG_LOG_LEVEL         = 5  /**< Set log level (0=DEBUG..5=NONE) */
     } protocol_config_param_t;
 
     /**
@@ -272,3 +276,6 @@ extern "C"
 #endif
 
 #endif /* PROTOCOL_H */
+
+/** End of Protocol group */
+/** @} */
